@@ -1,0 +1,9 @@
+.env
+.DS_Store
+.next
+.open-next
+.wrangler
+output
+cloudflare-env.d.ts
+node_modules
+npm-debug.log*

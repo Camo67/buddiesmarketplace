@@ -1,0 +1,69 @@
+{
+  "realm": "buddies",
+  "enabled": true,
+  "registrationAllowed": true,
+  "loginWithEmailAllowed": true,
+  "displayName": "Buddies Worldwide",
+  "roles": {
+    "realm": [
+      {
+        "name": "buddies-admin",
+        "description": "Can access Buddies moderator review routes."
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "buddies-web",
+      "name": "Buddies Web",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "buddies-web-secret-change-me",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": true,
+      "rootUrl": "http://localhost:3000",
+      "baseUrl": "http://localhost:3000",
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "https://app.buddiesworldwide.online/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "https://app.buddiesworldwide.online"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      },
+      "defaultClientScopes": [
+        "profile",
+        "email",
+        "roles",
+        "web-origins"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "moderator",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Local",
+      "lastName": "Moderator",
+      "email": "moderator@buddies.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "moderator123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "buddies-admin"
+      ]
+    }
+  ]
+}
