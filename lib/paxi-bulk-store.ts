@@ -1,5 +1,11 @@
 import { randomUUID } from "node:crypto";
-import type { RowDataPacket } from "mysql2/promise";
+import type { QueryResultRow } from "pg";
+import {
+  executeStatement,
+  isPostgresProvider,
+  queryRows,
+  runSchemaStatement,
+} from "@/lib/database";
 import { getMysqlPool } from "@/lib/mysql";
 import type { ParsedPaxiShipment } from "@/lib/paxi-bulk";
 
@@ -15,7 +21,7 @@ export type PaxiBulkShipment = {
   createdAt: string;
 };
 
-type PaxiBulkShipmentRow = RowDataPacket & {
+type PaxiBulkShipmentRow = QueryResultRow & {
   id: string;
   batch_id: string;
   source_file_name: string;
@@ -29,7 +35,11 @@ type PaxiBulkShipmentRow = RowDataPacket & {
 
 let paxiBulkTableReady: Promise<void> | null = null;
 
-function normalizeDateTime(value: string) {
+function normalizeDateTime(value: string | Date) {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
   return value.includes("T") ? value : `${value.replace(" ", "T")}Z`;
 }
 
@@ -50,6 +60,29 @@ function mapRowToShipment(row: PaxiBulkShipmentRow): PaxiBulkShipment {
 async function ensurePaxiBulkShipmentsTable() {
   if (!paxiBulkTableReady) {
     paxiBulkTableReady = (async () => {
+      if (isPostgresProvider()) {
+        await runSchemaStatement(`
+          CREATE TABLE IF NOT EXISTS paxi_bulk_shipments (
+            id VARCHAR(36) PRIMARY KEY,
+            batch_id VARCHAR(36) NOT NULL,
+            source_file_name VARCHAR(255) NOT NULL,
+            receiver_name VARCHAR(255) NOT NULL,
+            receiver_mobile VARCHAR(32) NOT NULL,
+            destination_store VARCHAR(32) NOT NULL,
+            tracking_number VARCHAR(64) NULL,
+            status VARCHAR(32) NOT NULL DEFAULT 'staged',
+            created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        await runSchemaStatement(
+          "CREATE INDEX IF NOT EXISTS idx_paxi_bulk_shipments_batch_created ON paxi_bulk_shipments (batch_id, created_at)",
+        );
+        await runSchemaStatement(
+          "CREATE INDEX IF NOT EXISTS idx_paxi_bulk_shipments_created ON paxi_bulk_shipments (created_at)",
+        );
+        return;
+      }
+
       const pool = getMysqlPool();
       await pool.execute(`
         CREATE TABLE IF NOT EXISTS paxi_bulk_shipments (
@@ -80,13 +113,12 @@ async function ensurePaxiBulkShipmentsTable() {
 export async function createPaxiBulkShipmentBatch(
   shipments: ParsedPaxiShipment[],
   sourceFileName: string,
-) {
+): Promise<PaxiBulkShipment[]> {
   await ensurePaxiBulkShipmentsTable();
-  const pool = getMysqlPool();
   const batchId = randomUUID();
 
   for (const shipment of shipments) {
-    await pool.execute(
+    await executeStatement(
       `
         INSERT INTO paxi_bulk_shipments (
           id,
@@ -116,10 +148,11 @@ export async function createPaxiBulkShipmentBatch(
   return readPaxiBulkShipmentsByBatch(batchId);
 }
 
-export async function readPaxiBulkShipmentsByBatch(batchId: string) {
+export async function readPaxiBulkShipmentsByBatch(
+  batchId: string,
+): Promise<PaxiBulkShipment[]> {
   await ensurePaxiBulkShipmentsTable();
-  const pool = getMysqlPool();
-  const [rows] = await pool.query<PaxiBulkShipmentRow[]>(
+  const rows = await queryRows<PaxiBulkShipmentRow>(
     `
       SELECT
         id,
@@ -141,10 +174,11 @@ export async function readPaxiBulkShipmentsByBatch(batchId: string) {
   return rows.map(mapRowToShipment);
 }
 
-export async function readRecentPaxiBulkShipments(limit = 25) {
+export async function readRecentPaxiBulkShipments(
+  limit = 25,
+): Promise<PaxiBulkShipment[]> {
   await ensurePaxiBulkShipmentsTable();
-  const pool = getMysqlPool();
-  const [rows] = await pool.query<PaxiBulkShipmentRow[]>(
+  const rows = await queryRows<PaxiBulkShipmentRow>(
     `
       SELECT
         id,

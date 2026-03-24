@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ChevronLeft, Globe, MapPin, ShieldAlert } from "lucide-react";
 import { AdminReviewActions } from "@/components/admin-review-actions";
 import { AdminSessionPanel } from "@/components/admin-session-panel";
 import { ModerationStatusBadge } from "@/components/moderation-status-badge";
-import { adminSessionCookieName, readAdminSession } from "@/lib/admin-auth";
+import {
+  adminSessionCookieName,
+  hasRequiredAdminRole,
+  readAdminSession,
+} from "@/lib/admin-auth";
 import { getListingBySlug } from "@/lib/listings-store";
 
 type AdminReviewDetailPageProps = {
@@ -52,6 +56,11 @@ export default async function AdminReviewDetailPage({
   const { slug } = await params;
   const cookieStore = await cookies();
   const session = await readAdminSession(cookieStore.get(adminSessionCookieName)?.value);
+
+  if (!hasRequiredAdminRole(session)) {
+    redirect(`/admin/login?next=${encodeURIComponent(`/admin/reviews/${slug}`)}`);
+  }
+
   const listing = await getListingBySlug(slug);
 
   if (!listing) {
@@ -81,8 +90,8 @@ export default async function AdminReviewDetailPage({
               <div>
                 <p className="font-semibold text-[#9a6915]">Protected review route</p>
                 <p className="mt-1 text-[var(--ink-soft)]">
-                  This moderation screen now sits behind Keycloak login plus the required admin
-                  role. Decisions made here still update the MySQL table directly.
+                  This moderation screen now sits behind Supabase sign-in plus required admin
+                  access. Decisions made here still update the marketplace data directly.
                 </p>
               </div>
             </div>

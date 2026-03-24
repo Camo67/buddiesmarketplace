@@ -48,6 +48,22 @@ const deliveryOptions = [
 
 type PricingMethod = (typeof pricingMethods)[number];
 
+function parseAmountToSubunit(value: string) {
+  const normalized = value.replace(/,/g, ".").trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  const parsed = Number(normalized);
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  return Math.round(parsed * 100);
+}
+
 export function ServiceListingBuilder() {
   const router = useRouter();
   const [category, setCategory] = useState("Engineering & Design");
@@ -56,6 +72,8 @@ export function ServiceListingBuilder() {
   const [description, setDescription] = useState("");
   const [pricingMethod, setPricingMethod] = useState<PricingMethod>("Fixed");
   const [pricingValue, setPricingValue] = useState("");
+  const [secureCheckoutEnabled, setSecureCheckoutEnabled] = useState(true);
+  const [checkoutAmount, setCheckoutAmount] = useState("");
   const [location, setLocation] = useState("");
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("contact_only");
   const [paxiServiceWindow, setPaxiServiceWindow] = useState<PaxiServiceWindow>("3-5 business days");
@@ -79,11 +97,16 @@ export function ServiceListingBuilder() {
     contactLink.trim(),
   ].filter(Boolean).length;
 
+  const checkoutAmountSubunit =
+    pricingMethod === "Fixed" && secureCheckoutEnabled
+      ? parseAmountToSubunit(checkoutAmount)
+      : null;
   const isReady =
     title.trim().length > 0 &&
     tagline.trim().length > 0 &&
     description.trim().length > 0 &&
     pricingValue.trim().length > 0 &&
+    (pricingMethod !== "Fixed" || !secureCheckoutEnabled || checkoutAmountSubunit != null) &&
     location.trim().length > 0 &&
     (deliveryMethod !== "paxi_nationwide" || Boolean(paxiServiceWindow)) &&
     contactLink.trim().length > 0;
@@ -129,6 +152,8 @@ export function ServiceListingBuilder() {
     pricing: {
       method: pricingMethod.toLowerCase(),
       label: pricingValue,
+      checkoutAmountSubunit,
+      currency: checkoutAmountSubunit != null ? "ZAR" : null,
     },
     location,
     delivery: {
@@ -146,7 +171,9 @@ export function ServiceListingBuilder() {
     setCreatedListing(null);
 
     if (!isReady) {
-      setSubmitError("Please complete all required fields before publishing.");
+      setSubmitError(
+        "Please complete all required fields before publishing, including the secure checkout amount if enabled.",
+      );
       return;
     }
 
@@ -223,7 +250,18 @@ export function ServiceListingBuilder() {
             Pricing method
             <select
               value={pricingMethod}
-              onChange={(event) => setPricingMethod(event.target.value as PricingMethod)}
+              onChange={(event) => {
+                const nextMethod = event.target.value as PricingMethod;
+                setPricingMethod(nextMethod);
+
+                if (nextMethod !== "Fixed") {
+                  setSecureCheckoutEnabled(false);
+                }
+
+                if (nextMethod === "Fixed" && !checkoutAmount.trim()) {
+                  setSecureCheckoutEnabled(true);
+                }
+              }}
               className="rounded-[1.1rem] border border-[var(--line)] bg-white/85 px-4 py-3 outline-none"
             >
               {pricingMethods.map((option) => (
@@ -265,7 +303,7 @@ export function ServiceListingBuilder() {
           </label>
 
           <label className="grid gap-2 text-sm font-medium">
-            Price
+            Price label
             <input
               value={pricingValue}
               onChange={(event) => setPricingValue(event.target.value)}
@@ -273,6 +311,36 @@ export function ServiceListingBuilder() {
               placeholder="R250/hr or From R500"
             />
           </label>
+
+          {pricingMethod === "Fixed" ? (
+            <div className="grid gap-3 rounded-[1.2rem] border border-[rgba(46,139,87,0.16)] bg-[rgba(46,139,87,0.06)] px-4 py-4 text-sm text-[var(--foreground)]">
+              <label className="inline-flex items-center gap-3 font-medium">
+                <input
+                  type="checkbox"
+                  checked={secureCheckoutEnabled}
+                  onChange={(event) => setSecureCheckoutEnabled(event.target.checked)}
+                />
+                Enable Buddies secure checkout for this fixed-price listing
+              </label>
+              {secureCheckoutEnabled ? (
+                <label className="grid gap-2 text-sm font-medium">
+                  Secure checkout amount (ZAR)
+                  <input
+                    value={checkoutAmount}
+                    onChange={(event) => setCheckoutAmount(event.target.value)}
+                    className="rounded-[1.1rem] border border-[var(--line)] bg-white/85 px-4 py-3 outline-none"
+                    inputMode="decimal"
+                    placeholder="500.00"
+                  />
+                </label>
+              ) : (
+                <p className="leading-7 text-[var(--ink-soft)]">
+                  Buyers will still see the listing, but payment stays manual through your agreed
+                  contact flow.
+                </p>
+              )}
+            </div>
+          ) : null}
 
           <label className="grid gap-2 text-sm font-medium">
             Location or availability
@@ -421,6 +489,12 @@ export function ServiceListingBuilder() {
               <span className="font-semibold text-white">Pricing:</span>{" "}
               {pricingLabel}
             </p>
+            {checkoutAmountSubunit != null ? (
+              <p>
+                <span className="font-semibold text-white">Secure checkout:</span> Enabled at R
+                {(checkoutAmountSubunit / 100).toFixed(2)}
+              </p>
+            ) : null}
             <p>
               <span className="font-semibold text-white">Location:</span>{" "}
               {location.trim() || "Add a location or availability"}

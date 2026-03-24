@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { AdminSession } from "@/lib/admin-auth";
 
 type AdminSessionPanelProps = {
@@ -16,12 +15,12 @@ export function AdminSessionPanel({ session }: AdminSessionPanelProps) {
       {session.email ? <p className="mt-1">{session.email}</p> : null}
       <p className="mt-3">Role check passed for `{session.roles.join(", ")}`.</p>
       <div className="mt-4 flex flex-wrap gap-3">
-        <Link
-          href="/api/auth/keycloak/logout?next=/admin/login?logged_out=1"
+        <a
+          href="/api/auth/admin/logout?next=/admin/login?logged_out=1"
           className="font-semibold text-[var(--accent)]"
         >
           Sign out
-        </Link>
+        </a>
       </div>
     </div>
   );

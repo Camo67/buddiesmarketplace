@@ -24,6 +24,33 @@ import { readUserSession, userSessionCookieName } from "@/lib/user-auth";
 
 export const dynamic = "force-dynamic";
 
+const founderPitchCards = [
+  {
+    eyebrow: "Sign Up",
+    title: "Real you, or no account.",
+    body:
+      "Upload your ID and proof of address, then let Buddies tie every post back to a real person instead of another throwaway profile.",
+  },
+  {
+    eyebrow: "List It",
+    title: "Post the item. Keep the trail.",
+    body:
+      "Phone, couch, service, spare part - add the photos, set the price, and keep the deal tied to a verified listing owner.",
+  },
+  {
+    eyebrow: "Move It",
+    title: "PAXI gives the deal national reach.",
+    body:
+      "Sell beyond your own city and use the PAXI network to plan pickup and parcel movement across thousands of South African collection points.",
+  },
+  {
+    eyebrow: "Pay It",
+    title: "What the buyer sees should be the amount they pay.",
+    body:
+      "Fixed-price secure checkout is now wired for eligible listings, while the rest of the marketplace still keeps pricing visible and upfront.",
+  },
+];
+
 export default async function Home() {
   const cookieStore = await cookies();
   const userSession = await readUserSession(cookieStore.get(userSessionCookieName)?.value);
@@ -76,15 +103,15 @@ export default async function Home() {
             <div>
               <BuddiesLogo mode="dark" layout="inline" className="mb-5" />
               <p className="section-kicker text-[#ffc980]">
-                Browse Buddies Worldwide in South Africa
+                Buddies Worldwide, built by Camo
               </p>
               <h2 className="mt-4 max-w-4xl font-serif text-5xl leading-[0.92] md:text-7xl">
-                Vehicles, homes, jobs, services and communities in one safer marketplace.
+                Real people. Real trades. Real trust.
               </h2>
               <p className="mt-6 max-w-2xl text-base leading-7 text-white/76 md:text-lg">
-                Built for communities that need the speed of classifieds without the chaos.
-                Buddies Worldwide pairs broad local browsing with identity checks, listing
-                transparency and stronger moderation.
+                I built Buddies Worldwide because scammers keep taking food off real people's
+                tables. This version keeps the marketplace broad, but pushes harder on verified
+                identities, visible listings, nationwide reach and a cleaner fraud trail.
               </p>
 
               <div className="mt-8 grid gap-3 rounded-[2rem] border border-white/10 bg-white/8 p-4 md:grid-cols-[minmax(0,1fr)_220px_190px_auto]">
@@ -176,76 +203,66 @@ export default async function Home() {
         <div className="glass-panel rounded-[2.2rem] p-6 md:p-8">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center">
             <div>
-              <p className="section-kicker">Onboarding</p>
+              <p className="section-kicker">No Fluff</p>
               <h2 className="mt-3 font-serif text-4xl leading-none md:text-5xl">
-                Sign up once, browse first, unlock selling when you are ready.
+                Here's how Buddies Worldwide works when you strip out the bullshit.
               </h2>
               <p className="mt-4 max-w-2xl text-base leading-7 text-[var(--ink-soft)]">
-                Every new account should accept the marketplace terms before posting, while
-                restricted sections like Personals explain their age gate up front instead of
-                burying it after registration.
+                Yo, it's your boy Camo - your local app dev. Buddies Worldwide is for people who
+                are tired of scammers wasting time, stealing money and hiding behind fake profiles.
+                The point is simple: make it easier to trade anywhere in South Africa without
+                acting like fraud is just part of the game.
               </p>
 
-              <div className="mt-6 grid gap-3 md:grid-cols-3">
-                <div className="soft-card rounded-[1.6rem] p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
-                    Step 1
-                  </p>
-                  <h3 className="mt-2 text-lg font-bold">Create account</h3>
-                  <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
-                    Name, email, mobile and city captured during registration.
-                  </p>
-                </div>
-                <div className="soft-card rounded-[1.6rem] p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
-                    Step 2
-                  </p>
-                  <h3 className="mt-2 text-lg font-bold">Accept terms</h3>
-                  <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
-                    Users agree to marketplace conduct rules and learn how restricted sections work.
-                  </p>
-                </div>
-                <div className="soft-card rounded-[1.6rem] p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
-                    Step 3
-                  </p>
-                  <h3 className="mt-2 text-lg font-bold">Start browsing or selling</h3>
-                  <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
-                    Buying comes first by default, then seller access unlocks after review.
-                  </p>
-                </div>
+              <div className="mt-6 grid gap-3 md:grid-cols-2">
+                {founderPitchCards.map((card) => (
+                  <div key={card.title} className="soft-card rounded-[1.6rem] p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+                      {card.eyebrow}
+                    </p>
+                    <h3 className="mt-2 text-lg font-bold">{card.title}</h3>
+                    <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">{card.body}</p>
+                  </div>
+                ))}
               </div>
             </div>
 
-            <div className="soft-card rounded-[2rem] p-6">
-              <div className="inline-flex items-center gap-2 rounded-full bg-[rgba(242,140,40,0.12)] px-3 py-2 text-sm font-semibold text-[var(--accent)]">
+            <div className="dark-panel rounded-[2rem] p-6 text-white">
+              <div className="inline-flex items-center gap-2 rounded-full bg-[rgba(255,255,255,0.12)] px-3 py-2 text-sm font-semibold text-[#ffc980]">
                 <FileText size={16} />
-                Account rules preview
+                Camo's take
               </div>
-              <div className="mt-5 space-y-3 text-sm leading-6 text-[var(--ink-soft)]">
-                <div className="rounded-[1.2rem] border border-[var(--line)] bg-white/65 px-4 py-3">
-                  The general marketplace stays open, but Personals is locked behind 18+
-                  confirmation.
+              <h3 className="mt-4 font-serif text-3xl leading-tight">
+                Scammers? Fuck off.
+              </h3>
+              <div className="mt-5 space-y-3 text-sm leading-7 text-white/82">
+                <div className="rounded-[1.2rem] border border-white/12 bg-white/8 px-4 py-3">
+                  Report it, and the moderation trail stays tied to the listing, the account and
+                  the identity details that came in during signup.
                 </div>
-                <div className="rounded-[1.2rem] border border-[var(--line)] bg-white/65 px-4 py-3">
-                  Personals content is strictly adults-only and subject to additional moderation.
+                <div className="rounded-[1.2rem] border border-white/12 bg-white/8 px-4 py-3">
+                  Fixed-price checkout now has a server-side payment trail for eligible listings
+                  instead of relying on screenshots and stories.
                 </div>
-                <div className="rounded-[1.2rem] border border-[var(--line)] bg-white/65 px-4 py-3">
-                  Posting means agreeing not to scam, impersonate, harass or misrepresent goods.
+                <div className="rounded-[1.2rem] border border-white/12 bg-white/8 px-4 py-3">
+                  The whole point is national reach without "sorry, Joburg only" energy.
                 </div>
               </div>
+              <p className="mt-5 text-sm font-semibold uppercase tracking-[0.2em] text-[#9fe1b8]">
+                Buddies Worldwide. You in?
+              </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
                   href={signupHref}
-                  className="rounded-full bg-[var(--foreground)] px-5 py-3 text-sm font-bold text-white"
+                  className="rounded-full bg-white px-5 py-3 text-sm font-bold text-[var(--foreground)]"
                 >
-                  {userSession ? "Create listing" : "Create account"}
+                  {userSession ? "Create listing" : "Join now"}
                 </Link>
                 <Link
-                  href="/terms"
-                  className="rounded-full border border-[var(--line)] px-5 py-3 text-sm font-semibold"
+                  href={howItWorksHref}
+                  className="rounded-full border border-white/22 px-5 py-3 text-sm font-semibold text-white/92"
                 >
-                  Read terms
+                  See how it works
                 </Link>
               </div>
             </div>
@@ -391,8 +408,8 @@ export default async function Home() {
       <footer className="page-shell mt-8">
         <div className="glass-panel flex flex-col gap-4 rounded-[2rem] px-5 py-5 text-sm text-[var(--ink-soft)] md:flex-row md:items-center md:justify-between md:px-6">
           <p>
-            Buddies Worldwide uses visible trust and moderation rules from signup onward, with the
-            Personals section locked to 18+ users.
+            Real people. Real trades. Real trust. Built to make scammers feel unwelcome from the
+            first click.
           </p>
           <div className="flex flex-wrap gap-4 font-semibold text-[var(--foreground)]">
             <Link href={signupHref}>{userSession ? "Create Listing" : "Sign Up"}</Link>

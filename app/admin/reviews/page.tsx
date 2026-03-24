@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { ChevronRight, ClipboardCheck, ShieldAlert } from "lucide-react";
 import { AdminSessionPanel } from "@/components/admin-session-panel";
 import { EmptyListingsState } from "@/components/empty-listings-state";
 import { ModerationStatusBadge } from "@/components/moderation-status-badge";
-import { adminSessionCookieName, readAdminSession } from "@/lib/admin-auth";
+import {
+  adminSessionCookieName,
+  hasRequiredAdminRole,
+  readAdminSession,
+} from "@/lib/admin-auth";
 import { listingStatusLabels, listingStatuses } from "@/lib/moderation";
 import { readListings, type Listing } from "@/lib/listings-store";
 
@@ -64,6 +69,11 @@ function ListingQueueCard({ listing }: { listing: Listing }) {
 export default async function AdminReviewsPage() {
   const cookieStore = await cookies();
   const session = await readAdminSession(cookieStore.get(adminSessionCookieName)?.value);
+
+  if (!hasRequiredAdminRole(session)) {
+    redirect("/admin/login?next=%2Fadmin%2Freviews");
+  }
+
   const listings = await readListings();
   const counts = listingStatuses.reduce<Record<string, number>>((accumulator, status) => {
     accumulator[status] = listings.filter((listing) => listing.reviewStatus === status).length;
@@ -88,8 +98,9 @@ export default async function AdminReviewsPage() {
                 Moderator queue and status changes
               </h1>
               <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--ink-soft)]">
-                This internal screen sits directly on top of the MySQL listings table. Moderators
-                can review submissions, move them through the queue and decide what becomes public.
+                This internal screen sits directly on top of the marketplace listings data.
+                Moderators can review submissions, move them through the queue and decide what
+                becomes public.
               </p>
             </div>
 
@@ -112,7 +123,7 @@ export default async function AdminReviewsPage() {
               <div>
                 <p className="font-semibold text-[#9a6915]">Protected admin notice</p>
                 <p className="mt-1 text-[var(--ink-soft)]">
-                  This review area now requires Keycloak login plus the configured admin role before
+                  This review area now requires Supabase sign-in plus configured admin access before
                   moderators can review or change listing status.
                 </p>
               </div>

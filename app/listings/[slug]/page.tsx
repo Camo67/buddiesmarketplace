@@ -1,9 +1,17 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { ChevronLeft, Globe, MapPin, ShieldCheck } from "lucide-react";
 import { ModerationStatusBadge } from "@/components/moderation-status-badge";
+import { PaymentCheckoutCard } from "@/components/payment-checkout-card";
 import { getListingBySlug } from "@/lib/listings-store";
 import { listingStatusLabels } from "@/lib/moderation";
+import {
+  calculateMarketplaceFee,
+  formatCurrencyFromSubunit,
+  isPaystackConfigured,
+} from "@/lib/paystack";
+import { readUserSession, userSessionCookieName } from "@/lib/user-auth";
 
 type ListingDetailPageProps = {
   params: Promise<{
@@ -26,11 +34,24 @@ function formatDate(value: string | null) {
 
 export default async function ListingDetailPage({ params }: ListingDetailPageProps) {
   const { slug } = await params;
+  const cookieStore = await cookies();
+  const userSession = await readUserSession(cookieStore.get(userSessionCookieName)?.value);
   const listing = await getListingBySlug(slug);
 
   if (!listing || listing.reviewStatus !== "approved") {
     notFound();
   }
+
+  const secureCheckoutAvailable =
+    isPaystackConfigured() &&
+    listing.pricingMethod === "fixed" &&
+    listing.checkoutAmountSubunit != null &&
+    listing.checkoutCurrency != null &&
+    listing.ownerUserId !== userSession?.marketplaceUserId;
+  const checkoutBreakdown =
+    listing.checkoutAmountSubunit != null
+      ? calculateMarketplaceFee(listing.checkoutAmountSubunit)
+      : null;
 
   return (
     <main className="pb-16 pt-4">
@@ -77,6 +98,24 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
                   <span className="font-semibold text-[var(--foreground)]">Pricing:</span>{" "}
                   {listing.pricingMethod} / {listing.pricingLabel}
                 </p>
+                {checkoutBreakdown && listing.checkoutCurrency ? (
+                  <p>
+                    <span className="font-semibold text-[var(--foreground)]">Seller price:</span>{" "}
+                    {formatCurrencyFromSubunit(
+                      checkoutBreakdown.itemAmountSubunit,
+                      listing.checkoutCurrency,
+                    )}
+                  </p>
+                ) : null}
+                {checkoutBreakdown && listing.checkoutCurrency ? (
+                  <p>
+                    <span className="font-semibold text-[var(--foreground)]">Buyer total:</span>{" "}
+                    {formatCurrencyFromSubunit(
+                      checkoutBreakdown.buyerTotalSubunit,
+                      listing.checkoutCurrency,
+                    )}
+                  </p>
+                ) : null}
                 <p>
                   <span className="font-semibold text-[var(--foreground)]">Location:</span>{" "}
                   {listing.location}
@@ -93,6 +132,27 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
             </div>
 
             <aside className="space-y-6">
+              {secureCheckoutAvailable ? (
+                <PaymentCheckoutCard
+                  listingId={listing.id}
+                  listingHref={`/listings/${listing.slug}`}
+                  listingTitle={listing.title}
+                  formattedListingAmount={formatCurrencyFromSubunit(
+                    checkoutBreakdown!.itemAmountSubunit,
+                    listing.checkoutCurrency!,
+                  )}
+                  formattedFeeAmount={formatCurrencyFromSubunit(
+                    checkoutBreakdown!.platformFeeSubunit,
+                    listing.checkoutCurrency!,
+                  )}
+                  formattedBuyerTotal={formatCurrencyFromSubunit(
+                    checkoutBreakdown!.buyerTotalSubunit,
+                    listing.checkoutCurrency!,
+                  )}
+                  isSignedIn={Boolean(userSession)}
+                />
+              ) : null}
+
               <div className="dark-panel rounded-[2rem] p-6 text-white">
                 <p className="section-kicker text-[#ffc980]">Review Status</p>
                 <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold">

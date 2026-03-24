@@ -21,11 +21,14 @@ type SignupPageProps = {
   searchParams: Promise<{
     next?: string;
     error?: string;
+    mode?: string;
+    check_email?: string;
+    confirmed?: string;
   }>;
 };
 
 export default async function SignupPage({ searchParams }: SignupPageProps) {
-  const { next, error } = await searchParams;
+  const { next, error, mode, check_email: checkEmail, confirmed } = await searchParams;
   const nextPath = sanitizeUserRedirectPath(next);
   const cookieStore = await cookies();
   const userSession = await readUserSession(cookieStore.get(userSessionCookieName)?.value);
@@ -35,15 +38,20 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
   }
 
   const errorMessage =
-    error === "login_cancelled"
-      ? "The Keycloak sign-in was cancelled before it finished."
-      : error === "missing_callback"
-        ? "The Keycloak callback was missing required parameters."
-        : error === "callback_failed"
-          ? "The Keycloak sign-in could not be completed. Check your Keycloak settings and try again."
-          : error === "auth_unavailable"
-            ? "Keycloak is not ready for marketplace login yet. Check that the buddies realm exists and try again."
+    error === "missing_credentials"
+      ? "Enter both an email address and password to continue."
+      : error === "invalid_credentials"
+        ? "That email and password combination was not accepted."
+        : error === "email_not_confirmed"
+          ? "Confirm your email first, then sign in."
+          : error === "account_exists"
+            ? "An account with that email already exists. Sign in instead."
+            : error === "sign_up_failed"
+              ? "Supabase could not finish creating your account. Check the auth settings and try again."
+              : error === "sign_in_failed"
+                ? "Supabase could not sign you in just now. Try again in a moment."
           : null;
+  const showSigninCard = mode === "signin";
 
   return (
     <main className="pb-16 pt-4">
@@ -85,8 +93,8 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
                   Live auth step
                 </p>
                 <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
-                  This page now routes sign-up and sign-in through Keycloak, then creates a
-                  marketplace user profile in MySQL after the callback succeeds.
+                  This page now routes sign-up and sign-in through Supabase Auth, then creates a
+                  marketplace user profile in the marketplace database after sign-in succeeds.
                 </p>
               </div>
             </aside>
@@ -108,24 +116,22 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
               </div>
 
               <div className="mt-8 grid gap-4">
-                <div className="flex flex-wrap items-center gap-3">
-                  <Link
-                    href={`/api/auth/login?mode=register&next=${encodeURIComponent(nextPath)}`}
-                    className="rounded-full bg-[var(--foreground)] px-6 py-3 text-sm font-bold text-white"
-                  >
-                    Create account with Keycloak
-                  </Link>
-                  <Link
-                    href={`/api/auth/login?next=${encodeURIComponent(nextPath)}`}
-                    className="rounded-full border border-[var(--line)] px-6 py-3 text-sm font-semibold"
-                  >
-                    I already have an account
-                  </Link>
-                </div>
-
                 {errorMessage ? (
                   <div className="rounded-[1.4rem] border border-[rgba(242,140,40,0.2)] bg-[rgba(242,140,40,0.08)] px-4 py-3 text-sm text-[var(--foreground)]">
                     {errorMessage}
+                  </div>
+                ) : null}
+
+                {checkEmail === "1" ? (
+                  <div className="rounded-[1.4rem] border border-[rgba(46,139,87,0.18)] bg-[rgba(46,139,87,0.08)] px-4 py-3 text-sm text-[var(--foreground)]">
+                    Check your inbox for the Supabase confirmation email, then come back here and
+                    sign in.
+                  </div>
+                ) : null}
+
+                {confirmed === "1" ? (
+                  <div className="rounded-[1.4rem] border border-[rgba(46,139,87,0.18)] bg-[rgba(46,139,87,0.08)] px-4 py-3 text-sm text-[var(--foreground)]">
+                    Your email has been confirmed. You can sign in now.
                   </div>
                 ) : null}
 
@@ -143,21 +149,95 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
                     Required confirmations
                   </legend>
                   <p className="text-sm leading-6 text-[var(--foreground)]">
-                    By continuing through Keycloak, users still need to follow the Buddies terms,
-                    age-gated category rules, and anti-scam marketplace standards shown on this
-                    page.
+                    By continuing through Supabase Auth, users still need to follow the Buddies
+                    terms, age-gated category rules, and anti-scam marketplace standards shown on
+                    this page.
                   </p>
                 </fieldset>
-                <div className="flex flex-wrap items-center gap-3">
-                  <Link
-                    href={`/api/auth/login?mode=register&next=${encodeURIComponent(nextPath)}`}
-                    className="rounded-full bg-[var(--foreground)] px-6 py-3 text-sm font-bold text-white"
+
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <form
+                    action={`/api/auth/login?mode=register&next=${encodeURIComponent(nextPath)}`}
+                    method="post"
+                    className={`grid gap-3 rounded-[1.6rem] border p-4 ${
+                      showSigninCard
+                        ? "border-[var(--line)] bg-white/72"
+                        : "border-[rgba(46,139,87,0.18)] bg-[rgba(46,139,87,0.08)]"
+                    }`}
                   >
-                    Continue to registration
-                  </Link>
-                  <span className="text-sm text-[var(--ink-soft)]">
-                    After login, Buddies creates your marketplace user profile automatically.
-                  </span>
+                    <p className="text-sm font-semibold text-[var(--foreground)]">Create account</p>
+                    <input
+                      type="text"
+                      name="displayName"
+                      autoComplete="name"
+                      placeholder="Display name"
+                      className="rounded-[1.1rem] border border-[var(--line)] bg-white/85 px-4 py-3 text-sm outline-none"
+                    />
+                    <input
+                      type="email"
+                      name="email"
+                      required
+                      autoComplete="email"
+                      placeholder="Email address"
+                      className="rounded-[1.1rem] border border-[var(--line)] bg-white/85 px-4 py-3 text-sm outline-none"
+                    />
+                    <input
+                      type="password"
+                      name="password"
+                      required
+                      minLength={8}
+                      autoComplete="new-password"
+                      placeholder="Create a password"
+                      className="rounded-[1.1rem] border border-[var(--line)] bg-white/85 px-4 py-3 text-sm outline-none"
+                    />
+                    <button
+                      type="submit"
+                      className="rounded-full bg-[var(--foreground)] px-6 py-3 text-sm font-bold text-white"
+                    >
+                      Create account
+                    </button>
+                    <p className="text-sm text-[var(--ink-soft)]">
+                      If email confirmation is enabled in Supabase, we’ll ask you to verify before
+                      the first sign-in.
+                    </p>
+                  </form>
+
+                  <form
+                    action={`/api/auth/login?mode=signin&next=${encodeURIComponent(nextPath)}`}
+                    method="post"
+                    className={`grid gap-3 rounded-[1.6rem] border p-4 ${
+                      showSigninCard
+                        ? "border-[rgba(46,139,87,0.18)] bg-[rgba(46,139,87,0.08)]"
+                        : "border-[var(--line)] bg-white/72"
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-[var(--foreground)]">I already have an account</p>
+                    <input
+                      type="email"
+                      name="email"
+                      required
+                      autoComplete="email"
+                      placeholder="Email address"
+                      className="rounded-[1.1rem] border border-[var(--line)] bg-white/85 px-4 py-3 text-sm outline-none"
+                    />
+                    <input
+                      type="password"
+                      name="password"
+                      required
+                      autoComplete="current-password"
+                      placeholder="Password"
+                      className="rounded-[1.1rem] border border-[var(--line)] bg-white/85 px-4 py-3 text-sm outline-none"
+                    />
+                    <button
+                      type="submit"
+                      className="rounded-full border border-[var(--line)] bg-white px-6 py-3 text-sm font-semibold"
+                    >
+                      Sign in
+                    </button>
+                    <p className="text-sm text-[var(--ink-soft)]">
+                      After sign-in, Buddies creates or refreshes your marketplace profile automatically.
+                    </p>
+                  </form>
                 </div>
               </div>
 

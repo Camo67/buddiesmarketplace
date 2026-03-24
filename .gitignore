@@ -1,4 +1,7 @@
 .env
+.env.local
+.env.production.local
+.env*.local
 .DS_Store
 .next
 .open-next
@@ -7,3 +10,6 @@ output
 cloudflare-env.d.ts
 node_modules
 npm-debug.log*
+.agents
+.qwen
+skills-lock.json

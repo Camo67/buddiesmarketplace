@@ -1,0 +1,10 @@
+.git
+.gitignore
+.next
+.open-next
+.wrangler
+node_modules
+mobile/node_modules
+output
+.env
+.env.*

@@ -1,0 +1,63 @@
+{
+  "expo": {
+    "name": "Buddies Worldwide",
+    "slug": "buddiesworldwide-mobile",
+    "version": "0.1.0",
+    "description": "Trusted South African marketplace access through the Buddies Worldwide mobile app.",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "buddiesworldwide",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "online.buddiesworldwide.mobile",
+      "associatedDomains": [
+        "applinks:buddiesworldwide.online",
+        "applinks:app.buddiesworldwide.online"
+      ]
+    },
+    "android": {
+      "package": "online.buddiesworldwide.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": false,
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
+          "data": [
+            {
+              "scheme": "https",
+              "host": "buddiesworldwide.online",
+              "pathPrefix": "/"
+            },
+            {
+              "scheme": "https",
+              "host": "app.buddiesworldwide.online",
+              "pathPrefix": "/"
+            }
+          ]
+        }
+      ]
+    },
+    "extra": {
+      "marketplaceUrl": "https://app.buddiesworldwide.online"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

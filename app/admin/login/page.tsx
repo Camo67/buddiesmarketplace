@@ -35,15 +35,17 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
   const isConfigured = isAdminProtectionConfigured();
   const errorMessage =
     error === "missing_role"
-      ? "You signed in through Keycloak, but this account does not have the required admin role."
-      : error === "login_cancelled"
-        ? "The Keycloak login was cancelled before it finished."
-        : error === "missing_callback"
-          ? "The Keycloak callback was missing required parameters."
-        : error === "callback_failed"
-            ? "The Keycloak login could not be completed. Check the realm, client, and role setup."
-          : error === "auth_unavailable"
-            ? "Keycloak is reachable, but the configured buddies realm or client is not available yet."
+      ? "This Supabase account is signed in, but it is not allowed to open the moderation tools."
+      : error === "invalid_credentials"
+        ? "Those moderator credentials were not accepted."
+        : error === "email_not_confirmed"
+          ? "Confirm the account email before trying to open the moderator queue."
+          : error === "missing_credentials"
+            ? "Enter both the moderator email and password."
+            : error === "login_failed"
+              ? "The Supabase admin sign-in could not be completed. Check the Supabase auth settings and try again."
+              : error === "auth_unavailable"
+                ? "Supabase auth is not configured yet for this app."
             : null;
 
   return (
@@ -65,29 +67,55 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
                 Protected moderator access
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--ink-soft)]">
-                The moderation routes now use Keycloak login plus a required admin role, so review
-                tools and status changes stay behind real identity checks.
+                The moderation routes now use Supabase sign-in plus required admin access, so
+                review tools and status changes stay behind real identity checks.
               </p>
 
               {isConfigured ? (
-                <div className="mt-8">
-                  <Link
-                    href={`/api/auth/keycloak/login?next=${encodeURIComponent(nextPath)}`}
-                    className="inline-flex rounded-full bg-[var(--foreground)] px-6 py-3 text-sm font-bold text-white"
+                <form
+                  action={`/api/auth/admin/login?next=${encodeURIComponent(nextPath)}`}
+                  method="post"
+                  className="mt-8 grid max-w-xl gap-4"
+                >
+                  <label className="grid gap-2 text-sm font-semibold text-[var(--foreground)]">
+                    Admin email
+                    <input
+                      type="email"
+                      name="email"
+                      required
+                      autoComplete="email"
+                      className="rounded-[1.2rem] border border-[var(--line)] bg-white/80 px-4 py-3 font-medium outline-none"
+                      placeholder="moderator@buddiesworldwide.online"
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm font-semibold text-[var(--foreground)]">
+                    Password
+                    <input
+                      type="password"
+                      name="password"
+                      required
+                      autoComplete="current-password"
+                      className="rounded-[1.2rem] border border-[var(--line)] bg-white/80 px-4 py-3 font-medium outline-none"
+                      placeholder="Enter your password"
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    className="inline-flex w-fit rounded-full bg-[var(--foreground)] px-6 py-3 text-sm font-bold text-white"
                   >
-                    Continue with Keycloak
-                  </Link>
-                </div>
+                    Sign in with Supabase
+                  </button>
+                </form>
               ) : (
                 <div className="mt-8 rounded-[1.4rem] border border-[rgba(242,140,40,0.2)] bg-[rgba(242,140,40,0.08)] px-4 py-4 text-sm leading-7 text-[var(--foreground)]">
-                  Set `APP_SESSION_SECRET` and `KEYCLOAK_CLIENT_SECRET` in `.env` before opening
-                  the review queue.
+                  Set `APP_SESSION_SECRET`, `SUPABASE_URL`, and `SUPABASE_ANON_KEY` before
+                  opening the review queue in production.
                 </div>
               )}
 
               {configured === "0" ? (
                 <p className="mt-4 text-sm text-[var(--ink-soft)]">
-                  Access was blocked because the Keycloak admin auth settings were not configured yet.
+                  Access was blocked because the Supabase admin auth settings were not configured yet.
                 </p>
               ) : null}
 
@@ -111,9 +139,9 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
               </div>
               <div className="mt-5 space-y-3 text-sm leading-7 text-white/82">
                 <p>Admin pages no longer sit open on the public web surface.</p>
-                <p>Admin API writes now require the same Keycloak-backed session as the review screens.</p>
+                <p>Admin API writes now require the same Supabase-backed session as the review screens.</p>
                 <p>Unapproved listings stay out of public listing detail pages.</p>
-                <p>Local dev realm import includes user `moderator` with password `moderator123`.</p>
+                <p>Allow moderator accounts through `SUPABASE_ADMIN_EMAILS` or Supabase role metadata.</p>
               </div>
             </aside>
           </div>

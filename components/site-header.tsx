@@ -115,12 +115,12 @@ export function SiteHeader({ viewer }: SiteHeaderProps) {
                 {viewer.name ?? "Signed in"}
               </span>
             ) : null}
-            <Link
+            <a
               href={authLink.href}
               className="rounded-full border border-[var(--line)] bg-white/72 px-4 py-3 text-sm font-medium text-[var(--foreground)] transition hover:border-[rgba(242,140,40,0.25)] hover:bg-white"
             >
               {authLink.label}
-            </Link>
+            </a>
             <Link
               href={primaryCta.href}
               className="rounded-full bg-[var(--foreground)] px-5 py-3 text-sm font-bold text-white shadow-[0_12px_28px_rgba(7,32,23,0.22)]"

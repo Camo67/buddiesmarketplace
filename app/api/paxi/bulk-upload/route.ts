@@ -7,7 +7,9 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
-    const file = formData.get("file");
+    const file = (
+      formData as unknown as { get(name: string): FormDataEntryValue | null }
+    ).get("file");
 
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "Attach a .xlsx file before uploading." }, { status: 400 });

@@ -1,5 +1,11 @@
 import { randomUUID } from "node:crypto";
-import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
+import type { QueryResultRow } from "pg";
+import {
+  executeStatement,
+  isPostgresProvider,
+  queryRows,
+  runSchemaStatement,
+} from "@/lib/database";
 import { getMysqlPool } from "@/lib/mysql";
 import { isListingStatus, type ListingStatus } from "@/lib/moderation";
 import {
@@ -26,6 +32,8 @@ export type Listing = {
   description: string;
   pricingMethod: PricingMethod;
   pricingLabel: string;
+  checkoutAmountSubunit: number | null;
+  checkoutCurrency: string | null;
   location: string;
   deliveryMethod: DeliveryMethod;
   deliveryLabel: string;
@@ -51,6 +59,8 @@ export type CreateServiceListingInput = {
   pricing: {
     method: PricingMethod;
     label: string;
+    checkoutAmountSubunit?: number | null;
+    currency?: string | null;
   };
   location: string;
   delivery: {
@@ -66,7 +76,7 @@ export type UpdateListingModerationInput = {
   moderatedBy?: string;
 };
 
-type ListingRow = RowDataPacket & {
+type ListingRow = QueryResultRow & {
   id: string;
   slug: string;
   type: ListingType;
@@ -79,6 +89,8 @@ type ListingRow = RowDataPacket & {
   description: string;
   pricing_method: PricingMethod;
   pricing_label: string;
+  checkout_amount_subunit: number | null;
+  checkout_currency: string | null;
   location: string;
   delivery_method: DeliveryMethod;
   delivery_label: string;
@@ -96,16 +108,24 @@ let listingsTableReady: Promise<void> | null = null;
 
 async function ensureColumnExists(
   columnName: string,
-  definition: string,
+  mysqlDefinition: string,
+  postgresDefinition = mysqlDefinition,
 ) {
+  if (isPostgresProvider()) {
+    await runSchemaStatement(
+      `ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS ${postgresDefinition}`,
+    );
+    return;
+  }
+
   const pool = getMysqlPool();
-  const [rows] = await pool.query<RowDataPacket[]>(
+  const [rows] = (await pool.query(
     "SHOW COLUMNS FROM marketplace_listings LIKE ?",
     [columnName],
-  );
+  )) as [{ Field: string }[], unknown[]];
 
   if (rows.length === 0) {
-    await pool.execute(`ALTER TABLE marketplace_listings ADD COLUMN ${definition}`);
+    await pool.execute(`ALTER TABLE marketplace_listings ADD COLUMN ${mysqlDefinition}`);
   }
 }
 
@@ -118,9 +138,13 @@ function slugify(value: string) {
     .slice(0, 80);
 }
 
-function normalizeDateTime(value: string | null) {
+function normalizeDateTime(value: string | Date | null) {
   if (!value) {
     return null;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
   }
 
   if (value.includes("T")) {
@@ -144,6 +168,8 @@ function mapRowToListing(row: ListingRow): Listing {
     description: row.description,
     pricingMethod: row.pricing_method,
     pricingLabel: row.pricing_label,
+    checkoutAmountSubunit: row.checkout_amount_subunit,
+    checkoutCurrency: row.checkout_currency,
     location: row.location,
     deliveryMethod: row.delivery_method,
     deliveryLabel: row.delivery_label,
@@ -161,38 +187,81 @@ function mapRowToListing(row: ListingRow): Listing {
 async function ensureListingsTable() {
   if (!listingsTableReady) {
     listingsTableReady = (async () => {
-      const pool = getMysqlPool();
+      if (isPostgresProvider()) {
+        await runSchemaStatement(`
+          CREATE TABLE IF NOT EXISTS marketplace_listings (
+            id VARCHAR(36) PRIMARY KEY,
+            slug VARCHAR(120) NOT NULL UNIQUE,
+            type VARCHAR(32) NOT NULL,
+            owner_user_id VARCHAR(36) NULL,
+            owner_display_name VARCHAR(255) NULL,
+            category_slug VARCHAR(64) NOT NULL,
+            service_category VARCHAR(120) NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            tagline VARCHAR(255) NOT NULL,
+            description TEXT NOT NULL,
+            pricing_method VARCHAR(32) NOT NULL,
+            pricing_label VARCHAR(120) NOT NULL,
+            checkout_amount_subunit INT NULL,
+            checkout_currency VARCHAR(8) NULL,
+            location VARCHAR(255) NOT NULL,
+            delivery_method VARCHAR(32) NOT NULL DEFAULT 'contact_only',
+            delivery_label VARCHAR(255) NOT NULL DEFAULT 'Arrange directly with seller',
+            paxi_service_window VARCHAR(32) NULL,
+            contact_link VARCHAR(512) NOT NULL,
+            safety_note TEXT NOT NULL,
+            review_status VARCHAR(32) NOT NULL,
+            moderation_note TEXT NULL,
+            moderated_by VARCHAR(120) NULL,
+            reviewed_at TIMESTAMPTZ NULL DEFAULT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        await runSchemaStatement(
+          "CREATE INDEX IF NOT EXISTS idx_marketplace_listings_category_created ON marketplace_listings (category_slug, created_at)",
+        );
+        await runSchemaStatement(
+          "CREATE INDEX IF NOT EXISTS idx_marketplace_listings_review_status_created ON marketplace_listings (review_status, created_at)",
+        );
+        await runSchemaStatement(
+          "CREATE INDEX IF NOT EXISTS idx_marketplace_listings_created ON marketplace_listings (created_at)",
+        );
+      } else {
+        const pool = getMysqlPool();
 
-      await pool.execute(`
-        CREATE TABLE IF NOT EXISTS marketplace_listings (
-          id CHAR(36) NOT NULL PRIMARY KEY,
-          slug VARCHAR(120) NOT NULL UNIQUE,
-          type VARCHAR(32) NOT NULL,
-          owner_user_id CHAR(36) NULL,
-          owner_display_name VARCHAR(255) NULL,
-          category_slug VARCHAR(64) NOT NULL,
-          service_category VARCHAR(120) NOT NULL,
-          title VARCHAR(255) NOT NULL,
-          tagline VARCHAR(255) NOT NULL,
-          description TEXT NOT NULL,
-          pricing_method VARCHAR(32) NOT NULL,
-          pricing_label VARCHAR(120) NOT NULL,
-          location VARCHAR(255) NOT NULL,
-          delivery_method VARCHAR(32) NOT NULL DEFAULT 'contact_only',
-          delivery_label VARCHAR(255) NOT NULL DEFAULT 'Arrange directly with seller',
-          paxi_service_window VARCHAR(32) NULL,
-          contact_link VARCHAR(512) NOT NULL,
-          safety_note TEXT NOT NULL,
-          review_status VARCHAR(32) NOT NULL,
-          moderation_note TEXT NULL,
-          moderated_by VARCHAR(120) NULL,
-          reviewed_at TIMESTAMP NULL DEFAULT NULL,
-          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          KEY idx_marketplace_listings_category_created (category_slug, created_at),
-          KEY idx_marketplace_listings_review_status_created (review_status, created_at),
-          KEY idx_marketplace_listings_created (created_at)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-      `);
+        await pool.execute(`
+          CREATE TABLE IF NOT EXISTS marketplace_listings (
+            id CHAR(36) NOT NULL PRIMARY KEY,
+            slug VARCHAR(120) NOT NULL UNIQUE,
+            type VARCHAR(32) NOT NULL,
+            owner_user_id CHAR(36) NULL,
+            owner_display_name VARCHAR(255) NULL,
+            category_slug VARCHAR(64) NOT NULL,
+            service_category VARCHAR(120) NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            tagline VARCHAR(255) NOT NULL,
+            description TEXT NOT NULL,
+            pricing_method VARCHAR(32) NOT NULL,
+            pricing_label VARCHAR(120) NOT NULL,
+            checkout_amount_subunit INT NULL,
+            checkout_currency VARCHAR(8) NULL,
+            location VARCHAR(255) NOT NULL,
+            delivery_method VARCHAR(32) NOT NULL DEFAULT 'contact_only',
+            delivery_label VARCHAR(255) NOT NULL DEFAULT 'Arrange directly with seller',
+            paxi_service_window VARCHAR(32) NULL,
+            contact_link VARCHAR(512) NOT NULL,
+            safety_note TEXT NOT NULL,
+            review_status VARCHAR(32) NOT NULL,
+            moderation_note TEXT NULL,
+            moderated_by VARCHAR(120) NULL,
+            reviewed_at TIMESTAMP NULL DEFAULT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_marketplace_listings_category_created (category_slug, created_at),
+            KEY idx_marketplace_listings_review_status_created (review_status, created_at),
+            KEY idx_marketplace_listings_created (created_at)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+      }
 
       await ensureColumnExists("owner_user_id", "owner_user_id CHAR(36) NULL");
       await ensureColumnExists(
@@ -221,11 +290,19 @@ async function ensureListingsTable() {
         "paxi_service_window",
         "paxi_service_window VARCHAR(32) NULL",
       );
+      await ensureColumnExists(
+        "checkout_amount_subunit",
+        "checkout_amount_subunit INT NULL",
+      );
+      await ensureColumnExists(
+        "checkout_currency",
+        "checkout_currency VARCHAR(8) NULL",
+      );
 
-      await pool.execute(
+      await executeStatement(
         "UPDATE marketplace_listings SET review_status = 'approved' WHERE review_status IS NULL OR review_status = ''",
       );
-      await pool.execute(
+      await executeStatement(
         "UPDATE marketplace_listings SET delivery_label = 'Arrange directly with seller' WHERE delivery_label IS NULL OR delivery_label = ''",
       );
     })();
@@ -274,6 +351,20 @@ function validateServiceListingInput(input: CreateServiceListingInput) {
   ) {
     throw new Error("Invalid PAXI delivery speed.");
   }
+
+  if (input.pricing.checkoutAmountSubunit != null) {
+    if (!Number.isInteger(input.pricing.checkoutAmountSubunit)) {
+      throw new Error("Checkout amount must be provided in currency subunits.");
+    }
+
+    if (input.pricing.checkoutAmountSubunit <= 0) {
+      throw new Error("Checkout amount must be greater than zero.");
+    }
+  }
+
+  if (input.pricing.currency && input.pricing.currency.trim().length !== 3) {
+    throw new Error("Checkout currency must be a valid 3-letter currency code.");
+  }
 }
 
 function validateModerationInput(input: UpdateListingModerationInput) {
@@ -295,7 +386,10 @@ function shouldFallbackToEmptyReadResult(error: unknown) {
       ? String((error as { code?: unknown }).code)
       : null;
 
-  if (message.includes("Missing MySQL connection settings")) {
+  if (
+    message.includes("Missing MySQL connection settings") ||
+    message.includes("Missing PostgreSQL connection settings")
+  ) {
     return true;
   }
 
@@ -325,8 +419,6 @@ async function withListingsReadFallback<T>(read: () => Promise<T>, fallbackValue
 
 async function queryListings(options: ReadListingsOptions = {}) {
   await ensureListingsTable();
-  const pool = getMysqlPool();
-
   const whereParts: string[] = [];
   const params: Array<string | number> = [];
 
@@ -349,7 +441,7 @@ async function queryListings(options: ReadListingsOptions = {}) {
     params.push(options.limit);
   }
 
-  const [rows] = await pool.query<ListingRow[]>(
+  const rows = await queryRows<ListingRow>(
     `
       SELECT
         id,
@@ -364,6 +456,8 @@ async function queryListings(options: ReadListingsOptions = {}) {
         description,
         pricing_method,
         pricing_label,
+        checkout_amount_subunit,
+        checkout_currency,
         location,
         delivery_method,
         delivery_label,
@@ -386,11 +480,11 @@ async function queryListings(options: ReadListingsOptions = {}) {
   return rows.map(mapRowToListing);
 }
 
-export async function readListings() {
+export async function readListings(): Promise<Listing[]> {
   return withListingsReadFallback(() => queryListings(), []);
 }
 
-export async function readPublicListings(limit?: number) {
+export async function readPublicListings(limit?: number): Promise<Listing[]> {
   return withListingsReadFallback(
     () =>
       queryListings({
@@ -401,11 +495,11 @@ export async function readPublicListings(limit?: number) {
   );
 }
 
-export async function createServiceListing(input: CreateServiceListingInput) {
+export async function createServiceListing(
+  input: CreateServiceListingInput,
+): Promise<Listing> {
   validateServiceListingInput(input);
   await ensureListingsTable();
-
-  const pool = getMysqlPool();
   const id = randomUUID();
   const slugBase = slugify(input.title) || "service-listing";
   const slug = `${slugBase}-${id.slice(0, 8)}`;
@@ -419,7 +513,7 @@ export async function createServiceListing(input: CreateServiceListingInput) {
       ? "Confirm payment before dispatch, share the selected PAXI collection point only after the order is agreed, and keep parcel references in writing."
       : "Meet in a public place for in-person work, confirm payment terms clearly, and use traceable delivery or booking methods where possible.";
 
-  await pool.execute(
+  await executeStatement(
     `
       INSERT INTO marketplace_listings (
         id,
@@ -434,6 +528,8 @@ export async function createServiceListing(input: CreateServiceListingInput) {
         description,
         pricing_method,
         pricing_label,
+        checkout_amount_subunit,
+        checkout_currency,
         location,
         delivery_method,
         delivery_label,
@@ -442,7 +538,7 @@ export async function createServiceListing(input: CreateServiceListingInput) {
         safety_note,
         review_status
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       id,
@@ -457,6 +553,10 @@ export async function createServiceListing(input: CreateServiceListingInput) {
       input.description.trim(),
       input.pricing.method,
       input.pricing.label.trim(),
+      input.pricing.checkoutAmountSubunit ?? null,
+      input.pricing.checkoutAmountSubunit != null
+        ? input.pricing.currency?.trim().toUpperCase() || "ZAR"
+        : null,
       input.location.trim(),
       input.delivery.method,
       deliveryLabel,
@@ -470,7 +570,7 @@ export async function createServiceListing(input: CreateServiceListingInput) {
   const listing = await getListingBySlug(slug);
 
   if (!listing) {
-    throw new Error("Listing was created but could not be read back from MySQL.");
+    throw new Error("Listing was created but could not be read back from the database.");
   }
 
   return listing;
@@ -479,15 +579,14 @@ export async function createServiceListing(input: CreateServiceListingInput) {
 export async function updateListingModerationById(
   id: string,
   input: UpdateListingModerationInput,
-) {
+): Promise<Listing | undefined> {
   validateModerationInput(input);
   await ensureListingsTable();
-  const pool = getMysqlPool();
 
   const moderatedBy = input.moderatedBy?.trim() || "Local Moderator";
   const moderationNote = input.moderationNote?.trim() || null;
 
-  const [result] = await pool.execute<ResultSetHeader>(
+  const result = await executeStatement(
     `
       UPDATE marketplace_listings
       SET
@@ -507,11 +606,10 @@ export async function updateListingModerationById(
   return getListingById(id);
 }
 
-export async function getListingById(id: string) {
+export async function getListingById(id: string): Promise<Listing | undefined> {
   return withListingsReadFallback(async () => {
     await ensureListingsTable();
-    const pool = getMysqlPool();
-    const [rows] = await pool.query<ListingRow[]>(
+    const rows = await queryRows<ListingRow>(
       `
         SELECT
           id,
@@ -526,6 +624,8 @@ export async function getListingById(id: string) {
           description,
           pricing_method,
           pricing_label,
+          checkout_amount_subunit,
+          checkout_currency,
           location,
           delivery_method,
           delivery_label,
@@ -548,11 +648,10 @@ export async function getListingById(id: string) {
   }, undefined);
 }
 
-export async function getListingBySlug(slug: string) {
+export async function getListingBySlug(slug: string): Promise<Listing | undefined> {
   return withListingsReadFallback(async () => {
     await ensureListingsTable();
-    const pool = getMysqlPool();
-    const [rows] = await pool.query<ListingRow[]>(
+    const rows = await queryRows<ListingRow>(
       `
         SELECT
           id,
@@ -567,6 +666,8 @@ export async function getListingBySlug(slug: string) {
           description,
           pricing_method,
           pricing_label,
+          checkout_amount_subunit,
+          checkout_currency,
           location,
           delivery_method,
           delivery_label,
@@ -592,7 +693,7 @@ export async function getListingBySlug(slug: string) {
 export async function getListingsByCategory(
   slug: string,
   options?: { publicOnly?: boolean },
-) {
+): Promise<Listing[]> {
   return withListingsReadFallback(
     () =>
       queryListings({

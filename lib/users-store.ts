@@ -1,10 +1,16 @@
 import { randomUUID } from "node:crypto";
-import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
+import type { QueryResultRow } from "pg";
+import {
+  executeStatement,
+  isPostgresProvider,
+  queryRows,
+  runSchemaStatement,
+} from "@/lib/database";
 import { getMysqlPool } from "@/lib/mysql";
 
 export type MarketplaceUser = {
   id: string;
-  keycloakSub: string;
+  authUserId: string;
   email: string | null;
   preferredUsername: string | null;
   displayName: string | null;
@@ -15,7 +21,7 @@ export type MarketplaceUser = {
   updatedAt: string;
 };
 
-type MarketplaceUserRow = RowDataPacket & {
+type MarketplaceUserRow = QueryResultRow & {
   id: string;
   keycloak_sub: string;
   email: string | null;
@@ -29,7 +35,7 @@ type MarketplaceUserRow = RowDataPacket & {
 };
 
 type UpsertMarketplaceUserInput = {
-  keycloakSub: string;
+  authUserId: string;
   email?: string | null;
   preferredUsername?: string | null;
   displayName?: string | null;
@@ -39,9 +45,13 @@ type UpsertMarketplaceUserInput = {
 
 let usersTableReady: Promise<void> | null = null;
 
-function normalizeDateTime(value: string | null) {
+function normalizeDateTime(value: string | Date | null) {
   if (!value) {
     return null;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
   }
 
   return value.includes("T") ? value : `${value.replace(" ", "T")}Z`;
@@ -55,7 +65,7 @@ function normalizeNullable(value: string | null | undefined) {
 function mapRowToMarketplaceUser(row: MarketplaceUserRow): MarketplaceUser {
   return {
     id: row.id,
-    keycloakSub: row.keycloak_sub,
+    authUserId: row.keycloak_sub,
     email: row.email,
     preferredUsername: row.preferred_username,
     displayName: row.display_name,
@@ -70,6 +80,30 @@ function mapRowToMarketplaceUser(row: MarketplaceUserRow): MarketplaceUser {
 async function ensureUsersTable() {
   if (!usersTableReady) {
     usersTableReady = (async () => {
+      if (isPostgresProvider()) {
+        await runSchemaStatement(`
+          CREATE TABLE IF NOT EXISTS marketplace_users (
+            id VARCHAR(36) PRIMARY KEY,
+            keycloak_sub VARCHAR(128) NOT NULL UNIQUE,
+            email VARCHAR(255),
+            preferred_username VARCHAR(255),
+            display_name VARCHAR(255),
+            first_name VARCHAR(120),
+            last_name VARCHAR(120),
+            last_login_at TIMESTAMPTZ NULL DEFAULT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        await runSchemaStatement(
+          "CREATE INDEX IF NOT EXISTS idx_marketplace_users_email ON marketplace_users (email)",
+        );
+        await runSchemaStatement(
+          "CREATE INDEX IF NOT EXISTS idx_marketplace_users_preferred_username ON marketplace_users (preferred_username)",
+        );
+        return;
+      }
+
       const pool = getMysqlPool();
 
       await pool.execute(`
@@ -99,10 +133,11 @@ async function ensureUsersTable() {
   }
 }
 
-export async function getMarketplaceUserById(id: string) {
+export async function getMarketplaceUserById(
+  id: string,
+): Promise<MarketplaceUser | undefined> {
   await ensureUsersTable();
-  const pool = getMysqlPool();
-  const [rows] = await pool.query<MarketplaceUserRow[]>(
+  const rows = await queryRows<MarketplaceUserRow>(
     `
       SELECT
         id,
@@ -125,9 +160,10 @@ export async function getMarketplaceUserById(id: string) {
   return rows[0] ? mapRowToMarketplaceUser(rows[0]) : undefined;
 }
 
-export async function upsertMarketplaceUser(input: UpsertMarketplaceUserInput) {
+export async function upsertMarketplaceUser(
+  input: UpsertMarketplaceUserInput,
+): Promise<MarketplaceUser | undefined> {
   await ensureUsersTable();
-  const pool = getMysqlPool();
   const normalizedEmail = normalizeNullable(input.email);
   const normalizedPreferredUsername = normalizeNullable(input.preferredUsername);
   const normalizedFirstName = normalizeNullable(input.firstName);
@@ -139,7 +175,7 @@ export async function upsertMarketplaceUser(input: UpsertMarketplaceUserInput) {
     derivedDisplayName ??
     normalizedPreferredUsername;
 
-  const [existingRows] = await pool.query<MarketplaceUserRow[]>(
+  const existingRows = await queryRows<MarketplaceUserRow>(
     `
       SELECT
         id,
@@ -156,11 +192,11 @@ export async function upsertMarketplaceUser(input: UpsertMarketplaceUserInput) {
       WHERE keycloak_sub = ?
       LIMIT 1
     `,
-    [input.keycloakSub],
+    [input.authUserId],
   );
 
   if (existingRows[0]) {
-    await pool.execute<ResultSetHeader>(
+    await executeStatement(
       `
         UPDATE marketplace_users
         SET
@@ -169,7 +205,8 @@ export async function upsertMarketplaceUser(input: UpsertMarketplaceUserInput) {
           display_name = ?,
           first_name = ?,
           last_name = ?,
-          last_login_at = CURRENT_TIMESTAMP
+          last_login_at = CURRENT_TIMESTAMP,
+          updated_at = CURRENT_TIMESTAMP
         WHERE keycloak_sub = ?
       `,
       [
@@ -178,7 +215,7 @@ export async function upsertMarketplaceUser(input: UpsertMarketplaceUserInput) {
         normalizedDisplayName || null,
         normalizedFirstName,
         normalizedLastName,
-        input.keycloakSub,
+        input.authUserId,
       ],
     );
 
@@ -187,7 +224,7 @@ export async function upsertMarketplaceUser(input: UpsertMarketplaceUserInput) {
 
   const id = randomUUID();
 
-  await pool.execute<ResultSetHeader>(
+  await executeStatement(
     `
       INSERT INTO marketplace_users (
         id,
@@ -203,7 +240,7 @@ export async function upsertMarketplaceUser(input: UpsertMarketplaceUserInput) {
     `,
     [
       id,
-      input.keycloakSub,
+      input.authUserId,
       normalizedEmail,
       normalizedPreferredUsername,
       normalizedDisplayName || null,

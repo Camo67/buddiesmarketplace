@@ -1,0 +1,67 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: buddies-app
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      APP_DB_PROVIDER: ${APP_DB_PROVIDER:-mysql}
+      APP_DB_URL: ${APP_DB_URL:-}
+      APP_DB_HOST: mysql
+      APP_DB_PORT: "3306"
+      APP_DB_NAME: ${MYSQL_DATABASE}
+      APP_DB_USER: ${MYSQL_USER}
+      APP_DB_PASSWORD: ${MYSQL_PASSWORD}
+      APP_BASE_URL: ${APP_BASE_URL}
+      APP_BASE_URL_ALIASES: ${APP_BASE_URL_ALIASES}
+      APP_SESSION_SECRET: ${APP_SESSION_SECRET}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      SUPABASE_ADMIN_EMAILS: ${SUPABASE_ADMIN_EMAILS}
+      SUPABASE_ADMIN_ROLE: ${SUPABASE_ADMIN_ROLE}
+      PAYSTACK_SECRET_KEY: ${PAYSTACK_SECRET_KEY}
+      PAYSTACK_PUBLIC_KEY: ${PAYSTACK_PUBLIC_KEY}
+      PAYSTACK_CURRENCY: ${PAYSTACK_CURRENCY}
+    ports:
+      - "3000:3000"
+
+  mysql:
+    image: mysql:8.4
+    container_name: buddies-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u${MYSQL_USER} -p${MYSQL_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: buddies-cloudflared
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_started
+    command:
+      - tunnel
+      - --no-autoupdate
+      - run
+      - --token
+      - ${CLOUDFLARE_TUNNEL_TOKEN}
+
+volumes:
+  mysql_data:
