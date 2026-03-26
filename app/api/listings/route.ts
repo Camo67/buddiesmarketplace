@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import {
+  readBotProtectionFromBody,
+  verifyBotProtectedRequest,
+} from "@/lib/bot-protection";
+import {
   createServiceListing,
   readPublicListings,
   type CreateServiceListingInput,
 } from "@/lib/listings-store";
+import { getMarketplaceUserById } from "@/lib/users-store";
 import { readUserSession, userSessionCookieName } from "@/lib/user-auth";
+import { canMarketplaceUserTrade } from "@/lib/user-verification";
 
 export const dynamic = "force-dynamic";
 
@@ -23,9 +29,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Sign in before creating a listing." }, { status: 401 });
     }
 
+    const marketplaceUser = await getMarketplaceUserById(userSession.marketplaceUserId);
+
+    if (!marketplaceUser || !canMarketplaceUserTrade(marketplaceUser.verificationStatus)) {
+      return NextResponse.json(
+        {
+          error:
+            "Submit and pass identity verification before creating a listing. Buddies requires reviewed docs for sellers.",
+        },
+        { status: 403 },
+      );
+    }
+
     const body = (await request.json()) as CreateServiceListingInput & {
       type?: string;
+      botProtection?: Record<string, unknown>;
     };
+    const botProtection = await verifyBotProtectedRequest({
+      request,
+      action: "create_listing",
+      botProtection: readBotProtectionFromBody(body),
+    });
+
+    if (!botProtection.ok) {
+      return NextResponse.json({ error: botProtection.message }, { status: 400 });
+    }
 
     if (body.type !== "service") {
       return NextResponse.json(
@@ -37,7 +65,11 @@ export async function POST(request: Request) {
     const listing = await createServiceListing({
       owner: {
         userId: userSession.marketplaceUserId,
-        displayName: userSession.name ?? userSession.preferredUsername ?? userSession.email,
+        displayName:
+          marketplaceUser.displayName ??
+          userSession.name ??
+          userSession.preferredUsername ??
+          userSession.email,
       },
       category: body.category,
       title: body.title,

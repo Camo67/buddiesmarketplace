@@ -53,11 +53,15 @@ export function getSupabaseUrl() {
 
 export function getSupabaseAnonKey() {
   const key =
+    stringValue(process.env.SUPABASE_PUBLISHABLE_KEY) ??
+    stringValue(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) ??
     stringValue(process.env.SUPABASE_ANON_KEY) ??
     stringValue(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
   if (!key) {
-    throw new Error("Missing SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+    throw new Error(
+      "Missing a Supabase public key. Set SUPABASE_PUBLISHABLE_KEY, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_ANON_KEY, or NEXT_PUBLIC_SUPABASE_ANON_KEY.",
+    );
   }
 
   return key;
@@ -67,7 +71,9 @@ export function isSupabaseAuthConfigured() {
   return Boolean(
     stringValue(process.env.APP_SESSION_SECRET) &&
       (stringValue(process.env.SUPABASE_URL) || stringValue(process.env.NEXT_PUBLIC_SUPABASE_URL)) &&
-      (stringValue(process.env.SUPABASE_ANON_KEY) ||
+      (stringValue(process.env.SUPABASE_PUBLISHABLE_KEY) ||
+        stringValue(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) ||
+        stringValue(process.env.SUPABASE_ANON_KEY) ||
         stringValue(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)),
   );
 }

@@ -7,7 +7,9 @@ import {
   updateMarketplaceOrderCheckout,
 } from "@/lib/orders-store";
 import { initializePaystackTransaction, isPaystackConfigured } from "@/lib/paystack";
+import { getMarketplaceUserById } from "@/lib/users-store";
 import { readUserSession, userSessionCookieName } from "@/lib/user-auth";
+import { canMarketplaceUserTrade } from "@/lib/user-verification";
 import { getListingById } from "@/lib/listings-store";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +28,18 @@ export async function POST(request: Request) {
 
     if (!userSession) {
       return NextResponse.json({ error: "Sign in before starting checkout." }, { status: 401 });
+    }
+
+    const marketplaceUser = await getMarketplaceUserById(userSession.marketplaceUserId);
+
+    if (!marketplaceUser || !canMarketplaceUserTrade(marketplaceUser.verificationStatus)) {
+      return NextResponse.json(
+        {
+          error:
+            "Account verification is required before buyer checkout can start. Submit your ID and proof of address first.",
+        },
+        { status: 403 },
+      );
     }
 
     if (!userSession.email) {

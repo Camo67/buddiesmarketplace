@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { ChevronLeft, ShieldCheck } from "lucide-react";
+import { BotProtectionFields } from "@/components/bot-protection-fields";
+import { TurnstileScript } from "@/components/turnstile-script";
 import {
   adminSessionCookieName,
   hasRequiredAdminRole,
@@ -9,6 +11,7 @@ import {
   readAdminSession,
   sanitizeAdminRedirectPath,
 } from "@/lib/admin-auth";
+import { getBotProtectionPublicConfig } from "@/lib/bot-protection";
 
 type AdminLoginPageProps = {
   searchParams: Promise<{
@@ -33,6 +36,7 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
   }
 
   const isConfigured = isAdminProtectionConfigured();
+  const botProtection = getBotProtectionPublicConfig();
   const errorMessage =
     error === "missing_role"
       ? "This Supabase account is signed in, but it is not allowed to open the moderation tools."
@@ -40,16 +44,19 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
         ? "Those moderator credentials were not accepted."
         : error === "email_not_confirmed"
           ? "Confirm the account email before trying to open the moderator queue."
-          : error === "missing_credentials"
-            ? "Enter both the moderator email and password."
-            : error === "login_failed"
-              ? "The Supabase admin sign-in could not be completed. Check the Supabase auth settings and try again."
+            : error === "missing_credentials"
+              ? "Enter both the moderator email and password."
+              : error === "bot_protection_failed"
+                ? "Please complete the anti-bot check and try again."
+              : error === "login_failed"
+                ? "The Supabase admin sign-in could not be completed. Check the Supabase auth settings and try again."
               : error === "auth_unavailable"
                 ? "Supabase auth is not configured yet for this app."
             : null;
 
   return (
     <main className="pb-16 pt-4">
+      {botProtection.enabled ? <TurnstileScript /> : null}
       <section className="page-shell">
         <div className="glass-panel rounded-[2.4rem] px-5 py-6 md:px-8 md:py-8">
           <Link
@@ -99,6 +106,11 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
                       placeholder="Enter your password"
                     />
                   </label>
+                  <BotProtectionFields
+                    enabled={botProtection.enabled}
+                    siteKey={botProtection.siteKey}
+                    action="admin_login"
+                  />
                   <button
                     type="submit"
                     className="inline-flex w-fit rounded-full bg-[var(--foreground)] px-6 py-3 text-sm font-bold text-white"

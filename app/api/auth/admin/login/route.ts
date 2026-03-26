@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { buildAuthCookieOptions, getRequestAppBaseUrl } from "@/lib/auth-runtime";
 import {
+  readBotProtectionFromFormData,
+  verifyBotProtectedRequest,
+} from "@/lib/bot-protection";
+import {
   adminLoginCookieName,
   adminSessionCookieName,
   isAdminProtectionConfigured,
@@ -41,6 +45,14 @@ function mapAdminAuthError(error: unknown) {
     return "email_not_confirmed";
   }
 
+  if (
+    normalized.includes("anti-bot check") ||
+    normalized.includes("automated submissions") ||
+    normalized.includes("bot protection")
+  ) {
+    return "bot_protection_failed";
+  }
+
   return "login_failed";
 }
 
@@ -63,6 +75,21 @@ export async function POST(request: Request) {
   }
 
   const formData = await request.formData();
+  const botProtection = await verifyBotProtectedRequest({
+    request,
+    action: "admin_login",
+    botProtection: readBotProtectionFromFormData(formData),
+  });
+
+  if (!botProtection.ok) {
+    return NextResponse.redirect(
+      buildAdminLoginUrl(request, {
+        error: "bot_protection_failed",
+        next: nextPath,
+      }),
+    );
+  }
+
   const email = getFormValue(formData, "email");
   const password = getFormValue(formData, "password");
 

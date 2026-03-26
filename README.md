@@ -140,7 +140,7 @@ What this covers:
 
 What this does not cover yet:
 
-- password reset and social login flows
+- password reset flows
 - row-level security policies for direct client-side Supabase data access
 - replacing every historical Keycloak note in this README
 
@@ -157,6 +157,36 @@ Notes:
 - the app auto-creates its marketplace tables on first write, just like the MySQL path
 - use a Postgres connection string with SSL enabled, for example `?sslmode=require`
 - the current compose files still include MySQL for the marketplace data path unless you point `APP_DB_PROVIDER=postgres` and `APP_DB_URL` at Supabase
+
+### Bot protection
+
+The public auth and trust forms can be protected with Cloudflare Turnstile.
+
+Set these environment variables:
+
+- `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
+- `TURNSTILE_SECRET_KEY`
+
+Protected flows:
+
+- marketplace email sign-up and sign-in
+- moderator sign-in
+- verification document submission
+- service listing creation
+
+If Turnstile keys are not configured, the app falls back to a basic honeypot and timing check. For production, configure Turnstile and validate tokens server-side on every protected request.
+
+### Meta webhook setup
+
+This repo now exposes a Meta webhook endpoint for challenge verification and signed event delivery:
+
+- callback URL: `https://your-domain.example/api/webhooks/meta`
+- verify token env: `META_WEBHOOK_VERIFY_TOKEN`
+- app secret env: `META_APP_SECRET`
+
+If you are configuring WhatsApp Cloud API webhooks in the Meta dashboard, subscribe to the `messages`
+field. That single field carries both incoming messages and message status updates in the webhook
+payload.
 
 ### 3. LibreTrack scope
 

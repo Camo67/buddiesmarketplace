@@ -7,13 +7,23 @@
     "build": "next build",
     "start": "next start",
     "start:cpanel": "node app.js",
+    "server:dev": "tsx watch server/src/index.ts",
+    "server:start": "tsx server/src/index.ts",
+    "server:check": "tsc -p server/tsconfig.json --noEmit",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1010.0",
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^11.2.0",
+    "@fastify/formbody": "^8.0.2",
+    "@fastify/rate-limit": "^10.3.0",
     "@supabase/supabase-js": "^2.57.4",
+    "dotenv": "^17.3.1",
+    "email-verifier": "^0.4.1",
+    "fastify": "^5.8.4",
     "jose": "^6.2.1",
     "lucide-react": "^0.564.0",
     "mysql2": "^3.20.0",
@@ -21,7 +31,8 @@
     "pg": "^8.20.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "read-excel-file": "^7.0.2"
+    "read-excel-file": "^7.0.2",
+    "tsx": "^4.21.0"
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "^1.17.1",

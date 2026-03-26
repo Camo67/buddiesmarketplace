@@ -31,7 +31,7 @@ const verificationItems = [
 const postingItems = [
   "Add pics, price, description - be straight about condition.",
   "Ads reviewed - day max.",
-  "Buyer pays? Funds held seven days.",
+  "Buyer checkout only unlocks after the buyer account is verified too.",
   `Item fucked up or not as described? Buyer reports, we refund - no questions. You wait till they say "cool."`,
 ];
 

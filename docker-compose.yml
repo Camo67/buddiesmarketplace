@@ -1,37 +1,40 @@
 services:
   mysql:
     image: mysql:8.4
-    container_name: buddies-mysql
     restart: unless-stopped
     environment:
+      TZ: UTC
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+00:00
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./db/mysql:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u${MYSQL_USER} -p${MYSQL_PASSWORD} --silent"]
       interval: 10s
       timeout: 5s
       retries: 15
 
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: buddies-cloudflared
+  adminer:
+    image: adminer:latest
     restart: unless-stopped
     profiles:
-      - preview
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    command:
-      - tunnel
-      - --no-autoupdate
-      - run
-      - --token
-      - ${CLOUDFLARE_TUNNEL_TOKEN}
+      - debug
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
+    ports:
+      - "8081:8080"
 
 volumes:
   mysql_data:

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { buildAuthCookieOptions, getRequestAppBaseUrl } from "@/lib/auth-runtime";
 import {
+  readBotProtectionFromFormData,
+  verifyBotProtectedRequest,
+} from "@/lib/bot-protection";
+import {
   createUserSessionCookieValue,
   signInMarketplaceUser,
   signUpMarketplaceUser,
@@ -43,6 +47,14 @@ function mapUserAuthError(error: unknown, mode: "signin" | "register") {
     return "account_exists";
   }
 
+  if (
+    normalized.includes("anti-bot check") ||
+    normalized.includes("automated submissions") ||
+    normalized.includes("bot protection")
+  ) {
+    return "bot_protection_failed";
+  }
+
   return mode === "register" ? "sign_up_failed" : "sign_in_failed";
 }
 
@@ -65,6 +77,22 @@ export async function POST(request: Request) {
   const mode = url.searchParams.get("mode") === "register" ? "register" : "signin";
   const appBaseUrl = getRequestAppBaseUrl(request);
   const formData = await request.formData();
+  const botProtection = await verifyBotProtectedRequest({
+    request,
+    action: "account_auth",
+    botProtection: readBotProtectionFromFormData(formData),
+  });
+
+  if (!botProtection.ok) {
+    return NextResponse.redirect(
+      buildSignupUrl(request, {
+        error: "bot_protection_failed",
+        next: nextPath,
+        mode,
+      }),
+    );
+  }
+
   const email = getFormValue(formData, "email");
   const password = getFormValue(formData, "password");
   const displayName = getFormValue(formData, "displayName");

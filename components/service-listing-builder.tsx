@@ -4,6 +4,12 @@ import { useMemo, useState, useTransition, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Shield, Sparkles } from "lucide-react";
+import { BotProtectionFields } from "@/components/bot-protection-fields";
+import {
+  botProtectionHoneypotFieldName,
+  botProtectionResponseFieldName,
+  botProtectionStartedAtFieldName,
+} from "@/lib/bot-protection-fields";
 import {
   buildDeliveryLabel,
   paxiOfficialLinks,
@@ -15,6 +21,13 @@ import {
 type CreatedListing = {
   slug: string;
   title: string;
+};
+
+type ServiceListingBuilderProps = {
+  botProtection: {
+    enabled: boolean;
+    siteKey: string | null;
+  };
 };
 
 const serviceCategories = [
@@ -64,7 +77,7 @@ function parseAmountToSubunit(value: string) {
   return Math.round(parsed * 100);
 }
 
-export function ServiceListingBuilder() {
+export function ServiceListingBuilder({ botProtection }: ServiceListingBuilderProps) {
   const router = useRouter();
   const [category, setCategory] = useState("Engineering & Design");
   const [title, setTitle] = useState("");
@@ -82,6 +95,8 @@ export function ServiceListingBuilder() {
   const [createdListing, setCreatedListing] = useState<CreatedListing | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [, startTransition] = useTransition();
+  const [botToken, setBotToken] = useState("");
+  const [botResetCounter, setBotResetCounter] = useState(0);
 
   const totalFields = deliveryMethod === "paxi_nationwide" ? 9 : 8;
   const completedFields = [
@@ -169,6 +184,7 @@ export function ServiceListingBuilder() {
     event.preventDefault();
     setSubmitError("");
     setCreatedListing(null);
+    const formData = new FormData(event.currentTarget);
 
     if (!isReady) {
       setSubmitError(
@@ -185,7 +201,14 @@ export function ServiceListingBuilder() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(apiPayload),
+        body: JSON.stringify({
+          ...apiPayload,
+          botProtection: {
+            [botProtectionHoneypotFieldName]: formData.get(botProtectionHoneypotFieldName),
+            [botProtectionStartedAtFieldName]: formData.get(botProtectionStartedAtFieldName),
+            [botProtectionResponseFieldName]: formData.get(botProtectionResponseFieldName),
+          },
+        }),
       });
 
       const data = (await response.json()) as {
@@ -195,6 +218,7 @@ export function ServiceListingBuilder() {
 
       if (!response.ok || !data.listing) {
         setSubmitError(data.error ?? "Something went wrong while creating the listing.");
+        setBotResetCounter((count) => count + 1);
         return;
       }
 
@@ -204,6 +228,7 @@ export function ServiceListingBuilder() {
       });
     } catch {
       setSubmitError("Could not reach the listings API. Please try again.");
+      setBotResetCounter((count) => count + 1);
     } finally {
       setIsSubmitting(false);
     }
@@ -212,14 +237,14 @@ export function ServiceListingBuilder() {
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.02fr)_420px]">
       <div className="soft-card rounded-[2rem] p-6 md:p-8">
-        <div className="flex items-start justify-between gap-4">
-          <div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
             <p className="section-kicker">Service Listing Builder</p>
-            <h2 className="mt-3 font-serif text-4xl leading-none md:text-5xl">
+            <h2 className="mt-3 font-serif text-3xl leading-none sm:text-4xl md:text-5xl">
               Create a service listing the Buddies way.
             </h2>
           </div>
-          <div className="rounded-full bg-[rgba(46,139,87,0.1)] px-3 py-2 text-sm font-semibold text-[var(--accent-2)]">
+          <div className="w-fit rounded-full bg-[rgba(46,139,87,0.1)] px-3 py-2 text-sm font-semibold text-[var(--accent-2)]">
             {completedFields}/{totalFields} complete
           </div>
         </div>
@@ -418,10 +443,19 @@ export function ServiceListingBuilder() {
               placeholder="https://your-portfolio-or-booking-link"
             />
           </label>
+          <div className="md:col-span-2">
+            <BotProtectionFields
+              enabled={botProtection.enabled}
+              siteKey={botProtection.siteKey}
+              action="create_listing"
+              resetCounter={botResetCounter}
+              onTokenChange={setBotToken}
+            />
+          </div>
           <div className="md:col-span-2 flex flex-wrap items-center gap-3">
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || (botProtection.enabled && !botToken)}
               className="rounded-full bg-[var(--foreground)] px-6 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting ? "Submitting..." : "Submit listing to API"}

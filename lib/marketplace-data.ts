@@ -41,7 +41,7 @@ export const categoryDefinitions: CategoryDefinition[] = [
       "Motorcycles - Scooters",
     ],
     icon: CarFront,
-    tone: "from-[#ffd486] via-[#f5a249] to-[#de6f1c]",
+    tone: "from-[#0b4db6] via-[#007fff] to-[#35a5ff]",
   },
   {
     slug: "real-estate",
@@ -49,7 +49,7 @@ export const categoryDefinitions: CategoryDefinition[] = [
     description: "Rooms, houses, apartments, student housing and vacation rentals.",
     examples: ["Rooms", "Houses", "Vacation Rentals", "Apartments"],
     icon: House,
-    tone: "from-[#8cd7a8] via-[#58af79] to-[#2f7f52]",
+    tone: "from-[#dbe9ff] via-[#8cb8ff] to-[#0b4db6]",
   },
   {
     slug: "for-sale",
@@ -62,7 +62,7 @@ export const categoryDefinitions: CategoryDefinition[] = [
       "Books - Magazines",
     ],
     icon: ShoppingBag,
-    tone: "from-[#e7d88d] via-[#b7b65d] to-[#7e8e33]",
+    tone: "from-[#ffd8cb] via-[#ffae90] to-[#ff7f50]",
   },
   {
     slug: "pets",
@@ -70,7 +70,7 @@ export const categoryDefinitions: CategoryDefinition[] = [
     description: "Adoptions, rehoming, breeders, food, accessories and pet services.",
     examples: ["Pets Adoption", "Cats", "Dogs", "Birds"],
     icon: PawPrint,
-    tone: "from-[#ffcd8d] via-[#f39a4d] to-[#c96c27]",
+    tone: "from-[#cfe4ff] via-[#7fb9ff] to-[#007fff]",
   },
   {
     slug: "personals",
@@ -83,7 +83,7 @@ export const categoryDefinitions: CategoryDefinition[] = [
       "Men looking for Men",
     ],
     icon: HeartHandshake,
-    tone: "from-[#ffd28f] via-[#f59b45] to-[#d56f1d]",
+    tone: "from-[#ffe2d8] via-[#ffb799] to-[#ff7f50]",
     restrictionLabel: "18+ locked",
   },
   {
@@ -97,7 +97,7 @@ export const categoryDefinitions: CategoryDefinition[] = [
       "Advertising - Media - PR",
     ],
     icon: BriefcaseBusiness,
-    tone: "from-[#9be0ae] via-[#63bc7e] to-[#2d7f49]",
+    tone: "from-[#d6efe2] via-[#7dc7a2] to-[#2e8b57]",
   },
   {
     slug: "education-learning",
@@ -110,7 +110,7 @@ export const categoryDefinitions: CategoryDefinition[] = [
       "Tutoring - Private Lessons",
     ],
     icon: GraduationCap,
-    tone: "from-[#b8e2b8] via-[#78b471] to-[#3f8146]",
+    tone: "from-[#e1ebff] via-[#98bfff] to-[#335fb0]",
   },
   {
     slug: "services",
@@ -123,7 +123,7 @@ export const categoryDefinitions: CategoryDefinition[] = [
       "Motor Service - Repair",
     ],
     icon: Wrench,
-    tone: "from-[#84d39b] via-[#3faa6d] to-[#21724a]",
+    tone: "from-[#cbe7ff] via-[#69b3ff] to-[#007fff]",
   },
   {
     slug: "community",
@@ -136,7 +136,7 @@ export const categoryDefinitions: CategoryDefinition[] = [
       "Musicians - Artists - Bands",
     ],
     icon: Users,
-    tone: "from-[#d7de8f] via-[#9caf58] to-[#5f7a2f]",
+    tone: "from-[#dbeee4] via-[#8dcfb0] to-[#2e8b57]",
   },
 ];
 
@@ -185,8 +185,8 @@ export const provinces = [
 ];
 
 export const trustSignals = [
-  "Verified profiles before posting",
-  "Fraud reports tied to listings and users",
-  "Seller trust levels visible on every ad",
-  "South Africa-first moderation workflow",
+  "Verified seller workflows before trading actions unlock",
+  "Moderator review trails tied to listings and user records",
+  "Visible trust cues designed for higher-risk marketplace categories",
+  "South Africa-first logistics and support flows",
 ];

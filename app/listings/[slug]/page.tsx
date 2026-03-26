@@ -11,6 +11,7 @@ import {
   formatCurrencyFromSubunit,
   isPaystackConfigured,
 } from "@/lib/paystack";
+import { getMarketplaceUserById } from "@/lib/users-store";
 import { readUserSession, userSessionCookieName } from "@/lib/user-auth";
 
 type ListingDetailPageProps = {
@@ -36,6 +37,9 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
   const { slug } = await params;
   const cookieStore = await cookies();
   const userSession = await readUserSession(cookieStore.get(userSessionCookieName)?.value);
+  const marketplaceUser = userSession
+    ? await getMarketplaceUserById(userSession.marketplaceUserId)
+    : null;
   const listing = await getListingBySlug(slug);
 
   if (!listing || listing.reviewStatus !== "approved") {
@@ -88,7 +92,16 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
                 </p>
                 <p>
                   <span className="font-semibold text-[var(--foreground)]">Seller:</span>{" "}
-                  {listing.ownerDisplayName ?? "Marketplace member"}
+                  {listing.ownerUserId ? (
+                    <Link
+                      href={`/profile/${listing.ownerUserId}?returnTo=${encodeURIComponent(`/listings/${listing.slug}`)}`}
+                      className="font-semibold text-[var(--accent)]"
+                    >
+                      {listing.ownerDisplayName ?? "Marketplace member"}
+                    </Link>
+                  ) : (
+                    <span>{listing.ownerDisplayName ?? "Marketplace member"}</span>
+                  )}
                 </p>
                 <p>
                   <span className="font-semibold text-[var(--foreground)]">Description:</span>{" "}
@@ -126,7 +139,7 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
                 </p>
                 <p>
                   <span className="font-semibold text-[var(--foreground)]">Contact:</span>{" "}
-                  {listing.contactLink}
+                  <span className="break-all">{listing.contactLink}</span>
                 </p>
               </div>
             </div>
@@ -150,6 +163,7 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
                     listing.checkoutCurrency!,
                   )}
                   isSignedIn={Boolean(userSession)}
+                  verificationStatus={marketplaceUser?.verificationStatus ?? null}
                 />
               ) : null}
 
@@ -186,7 +200,7 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
                   </div>
                   <div className="flex items-center gap-3 rounded-[1.2rem] border border-[var(--line)] bg-white/75 px-4 py-3">
                     <Globe size={16} />
-                    {listing.contactLink}
+                    <span className="break-all">{listing.contactLink}</span>
                   </div>
                   <div className="rounded-[1.2rem] border border-[var(--line)] bg-white/75 px-4 py-3">
                     Delivery: {listing.deliveryLabel}

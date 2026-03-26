@@ -13,3 +13,4 @@ npm-debug.log*
 .agents
 .qwen
 skills-lock.json
+.vercel

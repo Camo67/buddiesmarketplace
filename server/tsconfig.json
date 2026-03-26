@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "types": ["node"]
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "../lib/auth-runtime.ts",
+    "../lib/bot-protection-fields.ts",
+    "../lib/bot-protection.ts",
+    "../lib/canonical-accounts-store.ts",
+    "../lib/canonical-public-profiles.ts",
+    "../lib/mysql.ts",
+    "../lib/supabase-auth.ts",
+    "../lib/trust-score.ts",
+    "../lib/user-auth.ts"
+  ],
+  "exclude": ["../node_modules"]
+}

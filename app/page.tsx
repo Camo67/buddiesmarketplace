@@ -2,16 +2,20 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import {
   ArrowRight,
-  ChevronRight,
-  FileText,
+  BriefcaseBusiness,
+  Cpu,
+  FileCheck2,
   MapPinned,
-  Search,
   Shield,
+  ShieldCheck,
   Sparkles,
+  Truck,
 } from "lucide-react";
+import { BuddiesLogo } from "@/components/buddies-logo";
 import { CategoryCard } from "@/components/category-card";
 import { EmptyListingsState } from "@/components/empty-listings-state";
 import { RecentAdCard } from "@/components/recent-ad-card";
+import { StatusPill } from "@/components/status-pill";
 import {
   buildCategories,
   provinces,
@@ -19,180 +23,165 @@ import {
   trustSignals,
 } from "@/lib/marketplace-data";
 import { readPublicListings } from "@/lib/listings-store";
-import { BuddiesLogo } from "@/components/buddies-logo";
+import { getMarketplaceUserById } from "@/lib/users-store";
 import { readUserSession, userSessionCookieName } from "@/lib/user-auth";
+import { canMarketplaceUserTrade } from "@/lib/user-verification";
 
 export const dynamic = "force-dynamic";
 
-const founderPitchCards = [
+const personaCards = [
   {
-    eyebrow: "Sign Up",
-    title: "Real you, or no account.",
+    icon: BriefcaseBusiness,
+    title: "The Survivalist Entrepreneur",
     body:
-      "Upload your ID and proof of address, then let Buddies tie every post back to a real person instead of another throwaway profile.",
+      "Moves fast, sells to grow income, and needs simple trust tools that do not slow down a working day.",
   },
   {
-    eyebrow: "List It",
-    title: "Post the item. Keep the trail.",
+    icon: Shield,
+    title: "The Security-Driven Suburbanite",
     body:
-      "Phone, couch, service, spare part - add the photos, set the price, and keep the deal tied to a verified listing owner.",
+      "Will trade online when the process feels verifiable, predictable, and physically safer than informal meetups.",
   },
   {
-    eyebrow: "Move It",
-    title: "PAXI gives the deal national reach.",
+    icon: Sparkles,
+    title: "The Sustainable Fashionista",
     body:
-      "Sell beyond your own city and use the PAXI network to plan pickup and parcel movement across thousands of South African collection points.",
+      "Cares about authenticity and convenience, and responds to clean discovery flows with visible confidence markers.",
   },
   {
-    eyebrow: "Pay It",
-    title: "What the buyer sees should be the amount they pay.",
+    icon: Cpu,
+    title: "The High-End Tech Trader",
     body:
-      "Fixed-price secure checkout is now wired for eligible listings, while the rest of the marketplace still keeps pricing visible and upfront.",
+      "Needs stronger reassurance around identity, condition, and logistics before trusting a higher-value exchange.",
+  },
+];
+
+const trustSteps = [
+  {
+    eyebrow: "1. Account",
+    title: "Create a marketplace identity",
+    body:
+      "Email-based onboarding stays fast so browsing can start immediately, while higher-risk actions remain gated.",
+  },
+  {
+    eyebrow: "2. Verify",
+    title: "Submit identity and address documents",
+    body:
+      "Buddies turns a generic profile into a reviewable trade identity before posting or buyer-side trust actions unlock.",
+  },
+  {
+    eyebrow: "3. Review",
+    title: "Moderator review builds practical trust",
+    body:
+      "Listings and verification packages are checked before public trading visibility increases across the marketplace.",
+  },
+  {
+    eyebrow: "4. Move",
+    title: "Coordinate courier-first handover",
+    body:
+      "Nationwide logistics tools support safer deal flow without forcing users into risky ad-hoc meeting patterns.",
   },
 ];
 
 export default async function Home() {
   const cookieStore = await cookies();
   const userSession = await readUserSession(cookieStore.get(userSessionCookieName)?.value);
+  const currentUser = userSession
+    ? await getMarketplaceUserById(userSession.marketplaceUserId)
+    : null;
   const publicListings = await readPublicListings();
   const categories = buildCategories(publicListings);
-  const recentListings = publicListings.slice(0, 12);
+  const recentListings = publicListings.slice(0, 6);
   const totalListings = publicListings.length;
-  const signupHref = userSession ? "/listings/new-service" : "/signup";
-  const howItWorksHref = "/how-it-works";
+  const primaryHref = userSession
+    ? canMarketplaceUserTrade(currentUser?.verificationStatus)
+      ? "/listings/new-service"
+      : "/verify?next=/listings/new-service"
+    : "/signup?next=/verify";
 
   return (
-    <main className="pb-16 text-[var(--foreground)]">
-      <header className="page-shell pt-4">
-        <div className="glass-panel flex flex-col gap-4 rounded-[2rem] px-5 py-4 md:flex-row md:items-center md:justify-between md:px-6">
-          <div>
-            <p className="section-kicker">Buddies Worldwide</p>
-            <h1 className="mt-2 font-serif text-2xl font-semibold tracking-tight md:text-3xl">
-              Browse South Africa with more trust.
-            </h1>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            <Link
-              href="/terms"
-              className="rounded-full border border-[var(--line)] bg-white/70 px-4 py-2 font-medium"
-            >
-              Terms
-            </Link>
-            <Link
-              href={signupHref}
-              className="rounded-full border border-[var(--line)] bg-white/70 px-4 py-2 font-medium"
-            >
-              {userSession ? "Create Listing" : "Sign Up"}
-            </Link>
-            <Link
-              href={howItWorksHref}
-              className="rounded-full bg-[var(--foreground)] px-4 py-2 font-semibold text-white"
-            >
-              Start Selling
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      <section className="page-shell mt-6">
-        <div className="hero-panel relative overflow-hidden rounded-[2.6rem] px-6 py-8 text-white md:px-10 md:py-12">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(242,140,40,0.34),transparent_28%),radial-gradient(circle_at_right,rgba(94,201,134,0.22),transparent_26%),linear-gradient(130deg,rgba(6,27,19,0.95),rgba(17,70,45,0.9))]" />
-          <div className="absolute right-6 top-6 hidden h-44 w-44 rounded-full border border-white/10 bg-white/5 blur-2xl md:block" />
-          <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1.35fr)_340px] lg:items-end">
+    <main className="page-safe-bottom pt-4 text-[var(--foreground)]">
+      <section className="page-shell">
+        <div className="hero-panel relative overflow-hidden rounded-[2.4rem] px-5 py-6 text-white sm:px-7 md:px-10 md:py-10">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.12),transparent_22%),radial-gradient(circle_at_bottom_right,rgba(0,127,255,0.14),transparent_28%)]" />
+          <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_350px] lg:items-end">
             <div>
-              <BuddiesLogo mode="dark" layout="inline" className="mb-5" />
-              <p className="section-kicker text-[#ffc980]">
-                Buddies Worldwide, built by Camo
-              </p>
-              <h2 className="mt-4 max-w-4xl font-serif text-5xl leading-[0.92] md:text-7xl">
-                Real people. Real trades. Real trust.
-              </h2>
-              <p className="mt-6 max-w-2xl text-base leading-7 text-white/76 md:text-lg">
-                I built Buddies Worldwide because scammers keep taking food off real people's
-                tables. This version keeps the marketplace broad, but pushes harder on verified
-                identities, visible listings, nationwide reach and a cleaner fraud trail.
-              </p>
-
-              <div className="mt-8 grid gap-3 rounded-[2rem] border border-white/10 bg-white/8 p-4 md:grid-cols-[minmax(0,1fr)_220px_190px_auto]">
-                <label className="flex items-center gap-3 rounded-[1.3rem] bg-white/94 px-4 py-4 text-[var(--foreground)]">
-                  <Search size={18} />
-                  <input
-                    aria-label="Search listings"
-                    placeholder="Search cars, flats, services, tutors..."
-                    className="w-full bg-transparent text-sm outline-none placeholder:text-neutral-500"
-                  />
-                </label>
-                <div className="flex items-center gap-3 rounded-[1.3rem] bg-white/12 px-4 py-4 text-sm text-white/88">
-                  <MapPinned size={18} />
-                  South Africa
-                </div>
-                <div className="flex items-center gap-3 rounded-[1.3rem] bg-white/12 px-4 py-4 text-sm text-white/88">
-                  <Sparkles size={18} />
-                  All categories
-                </div>
-                <Link
-                  href="/listings"
-                  className="rounded-[1.3rem] bg-[var(--accent)] px-5 py-4 text-center text-sm font-bold text-[#10281d] transition hover:bg-[#ffb45f]"
-                >
-                  Browse now
-                </Link>
+              <BuddiesLogo mode="dark" layout="inline" className="mb-6" />
+              <div className="flex flex-wrap gap-2">
+                <StatusPill tone="info" className="border-white/12 bg-white/10 text-white">
+                  South Africa-first trust
+                </StatusPill>
+                <StatusPill tone="accent" className="border-white/12 bg-white/10 text-white">
+                  Verified trading gates
+                </StatusPill>
+                <StatusPill tone="success" className="border-white/12 bg-white/10 text-white">
+                  Courier-ready workflows
+                </StatusPill>
               </div>
+
+              <h1 className="mt-6 max-w-4xl font-serif text-4xl leading-[0.96] tracking-[-0.05em] sm:text-5xl md:text-7xl">
+                Trusted marketplace access for South Africa&apos;s formal and informal economy.
+              </h1>
+              <p className="mt-6 max-w-2xl text-base leading-8 text-white/82 md:text-lg">
+                Buddies Worldwide is designed to make peer-to-peer and small-business trade feel
+                practical, clear, and safer. Verified identities, visible moderation, and
+                logistics-aware handover patterns help users trade with more confidence.
+              </p>
 
               <div className="mt-8 flex flex-wrap gap-3">
-                {["Johannesburg", "Cape Town", "Durban", "Pretoria", "Nationwide"].map(
-                  (city) => (
-                    <span
-                      key={city}
-                      className="rounded-full border border-white/18 bg-white/8 px-4 py-2 text-sm text-white/85"
-                    >
-                      {city}
-                    </span>
-                  ),
-                )}
-              </div>
-
-              <div className="mt-6 flex flex-wrap gap-3 text-sm text-white/82">
-                <span className="rounded-full border border-white/18 bg-white/8 px-4 py-2">
-                  Sign-up requires terms acceptance
-                </span>
-                <span className="rounded-full border border-white/18 bg-white/8 px-4 py-2">
-                  Personals is locked to verified 18+ users
-                </span>
-                <span className="rounded-full border border-white/18 bg-white/8 px-4 py-2">
-                  Vehicles, jobs and services stay broadly open
-                </span>
+                <Link
+                  href={primaryHref}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(255,127,80,0.22)]"
+                >
+                  {userSession
+                    ? canMarketplaceUserTrade(currentUser?.verificationStatus)
+                      ? "Post a verified listing"
+                      : "Complete verification"
+                    : "Start with verification"}
+                  <ArrowRight size={16} />
+                </Link>
+                <Link
+                  href="/listings"
+                  className="inline-flex min-h-11 items-center rounded-full border border-white/16 bg-white/10 px-6 py-3 text-sm font-semibold text-white"
+                >
+                  Browse listings
+                </Link>
               </div>
             </div>
 
-            <aside className="rounded-[2rem] border border-white/10 bg-white/10 p-5 backdrop-blur md:p-6">
-              <p className="section-kicker text-[#9fe1b8]">Trust Layer</p>
-              <h3 className="mt-3 font-serif text-3xl leading-tight">
-                Marketplace reach with a fraud-aware backbone.
-              </h3>
+            <aside className="rounded-[2rem] border border-white/12 bg-white/10 p-5 backdrop-blur md:p-6">
+              <p className="section-kicker text-[#b9d9ff]">Trust Snapshot</p>
+              <h2 className="mt-3 font-serif text-3xl leading-tight tracking-[-0.04em] text-white">
+                Practical trust beats marketplace guesswork.
+              </h2>
 
-              <div className="mt-5 space-y-3">
+              <div className="mt-6 space-y-3">
                 {trustSignals.map((signal) => (
                   <div
                     key={signal}
-                    className="flex items-start gap-3 rounded-[1.2rem] bg-black/18 px-4 py-3 text-sm text-white/86"
+                    className="rounded-[1.25rem] border border-white/10 bg-[rgba(255,255,255,0.08)] px-4 py-3 text-sm leading-6 text-white/84"
                   >
-                    <Shield className="mt-0.5 shrink-0 text-[#9fe1b8]" size={16} />
-                    <span>{signal}</span>
+                    {signal}
                   </div>
                 ))}
               </div>
 
-              <div className="mt-6 rounded-[1.5rem] bg-white px-5 py-4 text-[var(--foreground)]">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
-                  Live scope
-                </p>
-                <p className="mt-2 text-3xl font-bold tracking-tight">
-                  {totalListings.toLocaleString()}
-                </p>
-                <p className="mt-1 text-sm text-[var(--ink-soft)]">
-                  live listings across South Africa categories
-                </p>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-[1.4rem] bg-white px-4 py-4 text-[var(--foreground)]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                    Live inventory
+                  </p>
+                  <p className="mt-2 text-3xl font-bold tracking-[-0.04em]">
+                    {totalListings.toLocaleString()}
+                  </p>
+                </div>
+                <div className="rounded-[1.4rem] bg-white/10 px-4 py-4 text-white">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/64">
+                    Core regions
+                  </p>
+                  <p className="mt-2 text-xl font-semibold">9 provinces</p>
+                  <p className="mt-1 text-sm text-white/72">Built around South Africa first.</p>
+                </div>
               </div>
             </aside>
           </div>
@@ -200,99 +189,182 @@ export default async function Home() {
       </section>
 
       <section className="page-shell mt-8">
-        <div className="glass-panel rounded-[2.2rem] p-6 md:p-8">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center">
-            <div>
-              <p className="section-kicker">No Fluff</p>
-              <h2 className="mt-3 font-serif text-4xl leading-none md:text-5xl">
-                Here's how Buddies Worldwide works when you strip out the bullshit.
-              </h2>
-              <p className="mt-4 max-w-2xl text-base leading-7 text-[var(--ink-soft)]">
-                Yo, it's your boy Camo - your local app dev. Buddies Worldwide is for people who
-                are tired of scammers wasting time, stealing money and hiding behind fake profiles.
-                The point is simple: make it easier to trade anywhere in South Africa without
-                acting like fraud is just part of the game.
-              </p>
-
-              <div className="mt-6 grid gap-3 md:grid-cols-2">
-                {founderPitchCards.map((card) => (
-                  <div key={card.title} className="soft-card rounded-[1.6rem] p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
-                      {card.eyebrow}
-                    </p>
-                    <h3 className="mt-2 text-lg font-bold">{card.title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">{card.body}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="dark-panel rounded-[2rem] p-6 text-white">
-              <div className="inline-flex items-center gap-2 rounded-full bg-[rgba(255,255,255,0.12)] px-3 py-2 text-sm font-semibold text-[#ffc980]">
-                <FileText size={16} />
-                Camo's take
-              </div>
-              <h3 className="mt-4 font-serif text-3xl leading-tight">
-                Scammers? Fuck off.
-              </h3>
-              <div className="mt-5 space-y-3 text-sm leading-7 text-white/82">
-                <div className="rounded-[1.2rem] border border-white/12 bg-white/8 px-4 py-3">
-                  Report it, and the moderation trail stays tied to the listing, the account and
-                  the identity details that came in during signup.
-                </div>
-                <div className="rounded-[1.2rem] border border-white/12 bg-white/8 px-4 py-3">
-                  Fixed-price checkout now has a server-side payment trail for eligible listings
-                  instead of relying on screenshots and stories.
-                </div>
-                <div className="rounded-[1.2rem] border border-white/12 bg-white/8 px-4 py-3">
-                  The whole point is national reach without "sorry, Joburg only" energy.
-                </div>
-              </div>
-              <p className="mt-5 text-sm font-semibold uppercase tracking-[0.2em] text-[#9fe1b8]">
-                Buddies Worldwide. You in?
-              </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link
-                  href={signupHref}
-                  className="rounded-full bg-white px-5 py-3 text-sm font-bold text-[var(--foreground)]"
-                >
-                  {userSession ? "Create listing" : "Join now"}
-                </Link>
-                <Link
-                  href={howItWorksHref}
-                  className="rounded-full border border-white/22 px-5 py-3 text-sm font-semibold text-white/92"
-                >
-                  See how it works
-                </Link>
-              </div>
-            </div>
+        <div className="bento-grid">
+          <div className="soft-card rounded-[2rem] p-6">
+            <p className="section-kicker">Audience Fit</p>
+            <h2 className="mt-3 font-serif text-3xl leading-none tracking-[-0.04em]">
+              Built for real market behavior.
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-[var(--ink-soft)]">
+              From township side hustles to higher-value suburban trades, the interface is
+              designed to reduce hesitation without hiding the safety layers.
+            </p>
+          </div>
+          <div className="soft-card rounded-[2rem] p-6">
+            <p className="section-kicker">Nationwide Reach</p>
+            <h3 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-[var(--foreground)]">
+              Courier-first logistics
+            </h3>
+            <p className="mt-4 text-sm leading-7 text-[var(--ink-soft)]">
+              Buddies supports discovery and trust, while PAXI-ready flows make national handover
+              feel more structured than informal direct arrangements.
+            </p>
+          </div>
+          <div className="soft-card rounded-[2rem] p-6">
+            <p className="section-kicker">Moderation</p>
+            <h3 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-[var(--foreground)]">
+              Visible review states
+            </h3>
+            <p className="mt-4 text-sm leading-7 text-[var(--ink-soft)]">
+              Listings become public only after review, making trust cues part of the browsing
+              experience rather than an afterthought.
+            </p>
+          </div>
+          <div className="soft-card rounded-[2rem] p-6">
+            <p className="section-kicker">Confidence</p>
+            <h3 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-[var(--foreground)]">
+              Safer trading expectations
+            </h3>
+            <p className="mt-4 text-sm leading-7 text-[var(--ink-soft)]">
+              Buyers and sellers get clearer expectations around identity, delivery, and review so
+              the whole flow feels more predictable.
+            </p>
           </div>
         </div>
       </section>
 
       <section className="page-shell mt-8">
-        <div className="glass-panel rounded-[2.2rem] p-6 md:p-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl">
-              <p className="section-kicker">Top Categories</p>
-              <h2 className="mt-3 font-serif text-4xl leading-none md:text-5xl">
-                The homepage should feel like a real classifieds market, not a startup brochure.
+        <div className="glass-panel rounded-[2.3rem] p-6 md:p-8">
+          <div className="max-w-3xl">
+            <p className="section-kicker">Audience Personas</p>
+            <h2 className="mt-3 font-serif text-3xl leading-none tracking-[-0.04em] sm:text-4xl md:text-5xl">
+              One marketplace, four trust mindsets.
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-[var(--ink-soft)]">
+              Buddies Worldwide bridges affordability, convenience, and security expectations
+              instead of forcing one user type to fit another.
+            </p>
+          </div>
+
+          <div className="trust-grid mt-8">
+            {personaCards.map((persona) => {
+              const Icon = persona.icon;
+
+              return (
+                <article key={persona.title} className="soft-card rounded-[1.7rem] p-5">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-[1.1rem] bg-[var(--background-alt)] text-[var(--trust)]">
+                    <Icon size={22} />
+                  </div>
+                  <h3 className="mt-5 font-serif text-2xl leading-tight tracking-[-0.04em] text-[var(--foreground)]">
+                    {persona.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-7 text-[var(--ink-soft)]">{persona.body}</p>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section id="trust-system" className="page-shell mt-8">
+        <div className="glass-panel rounded-[2.3rem] p-6 md:p-8">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+            <div>
+              <p className="section-kicker">How Trust Works</p>
+              <h2 className="mt-3 font-serif text-3xl leading-none tracking-[-0.04em] sm:text-4xl md:text-5xl">
+                A calmer path from sign-up to nationwide trade.
               </h2>
-              <p className="mt-4 text-base leading-7 text-[var(--ink-soft)]">
-                These sections mirror the browsing rhythm you described: category first, then
-                city, then recent ads. It gives users an immediate sense of volume and locality.
+              <div className="trust-grid mt-8">
+                {trustSteps.map((step) => (
+                  <article key={step.title} className="soft-card rounded-[1.7rem] p-5">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--trust)]">
+                      {step.eyebrow}
+                    </p>
+                    <h3 className="mt-3 font-serif text-2xl leading-tight tracking-[-0.04em] text-[var(--foreground)]">
+                      {step.title}
+                    </h3>
+                    <p className="mt-3 text-sm leading-7 text-[var(--ink-soft)]">{step.body}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+
+            <aside className="dark-panel rounded-[2rem] p-6 text-white">
+              <StatusPill tone="success" className="border-white/12 bg-white/10 text-white">
+                Courier-first reassurance
+              </StatusPill>
+              <h3 className="mt-4 font-serif text-3xl leading-tight tracking-[-0.04em]">
+                Trust should survive the handover, not disappear at checkout.
+              </h3>
+              <p className="mt-4 text-sm leading-7 text-white/78">
+                This phase focuses on verified identities, moderated listings, and structured
+                logistics cues. It deliberately avoids promising live escrow or wallet flows before
+                the product roadmap reaches that stage.
+              </p>
+
+              <div className="mt-6 space-y-3">
+                <div className="rounded-[1.4rem] border border-white/12 bg-white/10 px-4 py-3">
+                  <div className="inline-flex items-center gap-2 text-sm font-semibold text-white">
+                    <FileCheck2 size={16} />
+                    Identity review before higher-trust actions
+                  </div>
+                </div>
+                <div className="rounded-[1.4rem] border border-white/12 bg-white/10 px-4 py-3">
+                  <div className="inline-flex items-center gap-2 text-sm font-semibold text-white">
+                    <Truck size={16} />
+                    Courier and collection cues built into listing flow
+                  </div>
+                </div>
+                <div className="rounded-[1.4rem] border border-white/12 bg-white/10 px-4 py-3">
+                  <div className="inline-flex items-center gap-2 text-sm font-semibold text-white">
+                    <ShieldCheck size={16} />
+                    Visible moderation backing public marketplace pages
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link
+                  href="/verify"
+                  className="inline-flex min-h-11 items-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-[var(--foreground)]"
+                >
+                  Open verification
+                </Link>
+                <Link
+                  href="/paxi"
+                  className="inline-flex min-h-11 items-center rounded-full border border-white/18 px-5 py-3 text-sm font-semibold text-white"
+                >
+                  See logistics tools
+                </Link>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section className="page-shell mt-8">
+        <div className="glass-panel rounded-[2.3rem] p-6 md:p-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl">
+              <p className="section-kicker">Browse Categories</p>
+              <h2 className="mt-3 font-serif text-3xl leading-none tracking-[-0.04em] sm:text-4xl md:text-5xl">
+                Bento-style browsing that feels stable on mobile and desktop.
+              </h2>
+              <p className="mt-4 text-sm leading-7 text-[var(--ink-soft)]">
+                Category-first discovery helps users quickly orient themselves without the chaos of
+                unstructured classifieds pages.
               </p>
             </div>
             <Link
               href="/listings"
               className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent)]"
             >
-              Open all listings
+              Explore all listings
               <ArrowRight size={16} />
             </Link>
           </div>
 
-          <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-8 bento-grid">
             {categories.map((category) => (
               <CategoryCard key={category.slug} category={category} />
             ))}
@@ -301,27 +373,29 @@ export default async function Home() {
       </section>
 
       <section className="page-shell mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div id="recent-ads" className="soft-card rounded-[2.2rem] p-6 md:p-8">
+        <div className="soft-card rounded-[2.2rem] p-6 md:p-8">
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="section-kicker">Recent Listings</p>
-              <h2 className="mt-3 font-serif text-4xl leading-none md:text-5xl">
-                Fresh listings will show up here
+              <h2 className="mt-3 font-serif text-3xl leading-none tracking-[-0.04em] sm:text-4xl">
+                Recently approved listings
               </h2>
             </div>
-            <p className="max-w-xl text-sm leading-6 text-[var(--ink-soft)]">
-              This feed only shows moderator-approved listings from the live MySQL-backed
-              marketplace. New submissions stay private until they pass review.
+            <p className="max-w-xl text-sm leading-7 text-[var(--ink-soft)]">
+              Public inventory only shows listings that have cleared moderation, making trust cues
+              part of discovery from the first scroll.
             </p>
           </div>
 
           <div className="mt-8">
             {recentListings.length === 0 ? (
-                <EmptyListingsState
-                  title="No recent listings yet"
-                  description="The listing pages are real and ready, but there are no approved user-created posts yet. Once moderators approve listings, this section will show the latest ads automatically."
-                />
-              ) : (
+              <EmptyListingsState
+                title="No approved listings yet"
+                description="The marketplace shell is ready for trust-led browsing. Approved inventory will appear here automatically as moderation decisions are made."
+                ctaHref={primaryHref}
+                ctaLabel={userSession ? "Open your next step" : "Create your account"}
+              />
+            ) : (
               <div className="grid gap-4">
                 {recentListings.map((listing) => (
                   <RecentAdCard
@@ -347,15 +421,15 @@ export default async function Home() {
 
         <aside className="space-y-6">
           <div className="soft-card rounded-[2rem] p-6">
-            <p className="section-kicker">Browse Regions</p>
-            <h3 className="mt-3 font-serif text-3xl leading-tight">
-              South Africa first, expansion ready later.
+            <p className="section-kicker">Coverage</p>
+            <h3 className="mt-3 font-serif text-3xl leading-tight tracking-[-0.04em]">
+              South Africa first, scale-ready after that.
             </h3>
             <div className="mt-5 flex flex-wrap gap-2">
               {provinces.map((province) => (
                 <span
                   key={province}
-                  className="rounded-full border border-[var(--line)] bg-white/80 px-3 py-2 text-sm font-medium"
+                  className="rounded-full border border-[var(--line)] bg-[var(--background-alt)] px-3 py-2 text-sm font-medium"
                 >
                   {province}
                 </span>
@@ -366,54 +440,56 @@ export default async function Home() {
           <div className="soft-card rounded-[2rem] p-6">
             <p className="section-kicker">Top Cities</p>
             <div className="mt-4 space-y-3">
-              {topCities.map((city) => (
+              {topCities.slice(0, 8).map((city) => (
                 <div
                   key={city}
-                  className="flex items-center justify-between rounded-[1.2rem] border border-[var(--line)] bg-white/65 px-4 py-3 text-sm font-medium"
+                  className="flex items-center justify-between rounded-[1.2rem] border border-[var(--line)] bg-[var(--background-alt)] px-4 py-3 text-sm font-medium"
                 >
                   <span>{city}</span>
-                  <ChevronRight size={16} className="text-[var(--muted)]" />
+                  <MapPinned size={16} className="text-[var(--trust)]" />
                 </div>
               ))}
             </div>
           </div>
 
           <div className="dark-panel rounded-[2rem] p-6 text-white">
-            <p className="section-kicker text-[#9fe1b8]">Seller Onboarding</p>
-            <h3 className="mt-3 font-serif text-3xl leading-tight">
-              One account can browse today and sell tomorrow.
+            <p className="section-kicker text-[#b9d9ff]">Logistics Confidence</p>
+            <h3 className="mt-3 font-serif text-3xl leading-tight tracking-[-0.04em]">
+              Safer delivery starts with clearer expectations.
             </h3>
-            <p className="mt-4 text-sm leading-7 text-white/82">
-              The homepage can keep the marketplace open while the backend progressively unlocks
-              seller tools after verification, profile completion and trust checks.
+            <p className="mt-4 text-sm leading-7 text-white/78">
+              The Phase 1 experience focuses on identity, moderation, and logistics cues that make
+              remote trading feel more deliberate and less improvised.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
-                href={howItWorksHref}
-                className="inline-flex rounded-full bg-white px-5 py-3 text-sm font-bold text-[#123323]"
+                href="/paxi"
+                className="inline-flex min-h-11 items-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-[var(--foreground)]"
               >
-                Start Selling
+                Open logistics hub
               </Link>
               <Link
-                href="/admin/reviews"
-                className="inline-flex rounded-full border border-white/22 px-5 py-3 text-sm font-semibold text-white/92"
+                href={primaryHref}
+                className="inline-flex min-h-11 items-center rounded-full border border-white/18 px-5 py-3 text-sm font-semibold text-white"
               >
-                Moderator review queue
+                Continue onboarding
               </Link>
             </div>
           </div>
         </aside>
       </section>
 
-      <footer className="page-shell mt-8">
+      <footer className="page-shell mt-8 pb-6">
         <div className="glass-panel flex flex-col gap-4 rounded-[2rem] px-5 py-5 text-sm text-[var(--ink-soft)] md:flex-row md:items-center md:justify-between md:px-6">
           <p>
-            Real people. Real trades. Real trust. Built to make scammers feel unwelcome from the
-            first click.
+            Buddies Worldwide brings verified trust, calmer browsing, and logistics-aware trade to
+            South Africa&apos;s everyday marketplace economy.
           </p>
           <div className="flex flex-wrap gap-4 font-semibold text-[var(--foreground)]">
-            <Link href={signupHref}>{userSession ? "Create Listing" : "Sign Up"}</Link>
-            <Link href={howItWorksHref}>How It Works</Link>
+            <Link href={primaryHref}>{userSession ? "Continue" : "Create account"}</Link>
+            <Link href="/listings">Browse listings</Link>
+            <Link href="/privacy">Privacy Policy</Link>
+            <Link href="/data-deletion">Data Deletion</Link>
             <Link href="/terms">Terms &amp; Conditions</Link>
           </div>
         </div>

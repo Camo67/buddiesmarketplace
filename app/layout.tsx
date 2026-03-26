@@ -1,23 +1,25 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import { DM_Sans, Fraunces } from "next/font/google";
+import { Inter, Montserrat } from "next/font/google";
 import { SiteHeader } from "@/components/site-header";
 import {
   adminSessionCookieName,
   hasRequiredAdminRole,
   readAdminSession,
 } from "@/lib/admin-auth";
+import { getMarketplaceUserById } from "@/lib/users-store";
 import { readUserSession, userSessionCookieName } from "@/lib/user-auth";
 import "./globals.css";
 
-const dmSans = DM_Sans({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-sans",
+  variable: "--font-body",
 });
 
-const fraunces = Fraunces({
+const montserrat = Montserrat({
   subsets: ["latin"],
-  variable: "--font-serif",
+  variable: "--font-display",
+  weight: ["600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -34,15 +36,24 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const userSession = await readUserSession(cookieStore.get(userSessionCookieName)?.value);
   const adminSession = await readAdminSession(cookieStore.get(adminSessionCookieName)?.value);
+  const currentUser = userSession
+    ? await getMarketplaceUserById(userSession.marketplaceUserId)
+    : null;
   const viewer = {
-    name: userSession?.name ?? userSession?.preferredUsername ?? userSession?.email ?? null,
+    name:
+      currentUser?.displayName ??
+      userSession?.name ??
+      userSession?.preferredUsername ??
+      userSession?.email ??
+      null,
     isSignedIn: Boolean(userSession),
     isAdmin: hasRequiredAdminRole(adminSession),
+    verificationStatus: currentUser?.verificationStatus ?? null,
   };
 
   return (
     <html lang="en">
-      <body className={`${dmSans.variable} ${fraunces.variable}`}>
+      <body className={`${inter.variable} ${montserrat.variable}`}>
         <SiteHeader viewer={viewer} />
         {children}
       </body>

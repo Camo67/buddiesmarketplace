@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import { StatusPill } from "@/components/status-pill";
 import type { Category } from "@/lib/marketplace-data";
 
 export function CategoryCard({ category }: { category: Category }) {
@@ -7,43 +9,46 @@ export function CategoryCard({ category }: { category: Category }) {
   return (
     <Link
       href={`/categories/${category.slug}`}
-      className="group soft-card relative overflow-hidden rounded-[2rem] p-5 transition duration-300 hover:-translate-y-1"
+      className="group soft-card relative overflow-hidden rounded-[2rem] p-6 transition duration-300 hover:-translate-y-1"
     >
-      <div
-        className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${category.tone}`}
-      />
+      <div className={`absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${category.tone}`} />
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
             {category.count.toLocaleString()} listings
           </p>
-          <h3 className="mt-2 text-2xl font-bold tracking-tight">{category.name}</h3>
+          <h3 className="mt-2 break-words font-serif text-[1.7rem] font-bold tracking-[-0.04em] text-[var(--foreground)]">
+            {category.name}
+          </h3>
           {category.restrictionLabel ? (
-            <span className="mt-3 inline-flex rounded-full border border-[rgba(242,140,40,0.22)] bg-[rgba(242,140,40,0.08)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[#c96c27]">
+            <StatusPill tone="accent" size="sm" className="mt-3">
               {category.restrictionLabel}
-            </span>
+            </StatusPill>
           ) : null}
         </div>
         <div
-          className={`rounded-2xl bg-gradient-to-br p-3 text-white shadow-lg ${category.tone}`}
+          className={`rounded-[1.4rem] bg-gradient-to-br p-3.5 text-white shadow-[0_18px_40px_rgba(0,35,102,0.18)] ${category.tone}`}
         >
           <Icon size={24} />
         </div>
       </div>
 
-      <p className="mt-4 text-sm leading-6 text-[var(--ink-soft)]">
-        {category.description}
-      </p>
+      <p className="mt-4 text-sm leading-7 text-[var(--ink-soft)]">{category.description}</p>
 
       <div className="mt-5 flex flex-wrap gap-2">
         {category.examples.map((example) => (
           <span
             key={example}
-            className="rounded-full border border-[var(--line)] bg-white/70 px-3 py-1 text-xs font-medium text-[var(--foreground)]"
+            className="rounded-full border border-[var(--line)] bg-[var(--background-alt)] px-3 py-1.5 text-xs font-medium text-[var(--foreground)]"
           >
             {example}
           </span>
         ))}
+      </div>
+
+      <div className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
+        Explore category
+        <ArrowRight size={16} className="transition duration-300 group-hover:translate-x-1" />
       </div>
     </Link>
   );

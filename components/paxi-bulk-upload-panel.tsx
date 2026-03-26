@@ -83,14 +83,14 @@ export function PaxiBulkUploadPanel() {
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.04fr)_380px]">
       <div className="soft-card rounded-[2rem] p-6 md:p-8">
-        <div className="flex items-start justify-between gap-4">
-          <div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
             <p className="section-kicker">PAXI Bulk Upload</p>
-            <h2 className="mt-3 font-serif text-4xl leading-none md:text-5xl">
+            <h2 className="mt-3 font-serif text-3xl leading-none sm:text-4xl md:text-5xl">
               Upload the official workbook and stage parcels in one pass.
             </h2>
           </div>
-          <div className="rounded-full bg-[rgba(46,139,87,0.1)] px-3 py-2 text-sm font-semibold text-[var(--accent-2)]">
+          <div className="w-fit rounded-full bg-[rgba(46,139,87,0.1)] px-3 py-2 text-sm font-semibold text-[var(--accent-2)]">
             XLSX only
           </div>
         </div>

@@ -1,9 +1,6 @@
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
-import { getConfiguredAppBaseUrl } from "@/lib/auth-runtime";
-import {
-  createSupabaseAuthClient,
-  getSupabaseUserIdentity,
-} from "@/lib/supabase-auth";
+import { getConfiguredAppBaseUrl } from "./auth-runtime";
+import { createSupabaseAuthClient, getSupabaseUserIdentity } from "./supabase-auth";
 
 export const userSessionCookieName = "buddies_user_session";
 export const userLoginCookieName = "buddies_user_login";
@@ -125,6 +122,10 @@ export async function signInMarketplaceUser(input: {
     throw error ?? new Error("Supabase did not return a user for sign-in.");
   }
 
+  if (!stringValue(data.user.email_confirmed_at)) {
+    throw new Error("Email not confirmed");
+  }
+
   const identity = getSupabaseUserIdentity(data.user);
 
   return {
@@ -163,17 +164,19 @@ export async function signUpMarketplaceUser(input: {
     throw new Error("Supabase did not return a user for sign-up.");
   }
 
+  const identity = getSupabaseUserIdentity(data.user);
+
   if (!data.session) {
     return {
       needsEmailConfirmation: true as const,
       email: data.user.email ?? input.email,
+      identity,
     };
   }
 
-  const identity = getSupabaseUserIdentity(data.user);
-
   return {
     needsEmailConfirmation: false as const,
+    email: data.user.email ?? input.email,
     identity: {
       ...identity,
       expiresAt: getExpiresAt(data.session.expires_at),

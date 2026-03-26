@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import type { VerificationStatus } from "@/lib/user-verification";
 
 type PaymentCheckoutCardProps = {
   listingId: string;
@@ -11,6 +12,7 @@ type PaymentCheckoutCardProps = {
   formattedFeeAmount: string;
   formattedBuyerTotal: string;
   isSignedIn: boolean;
+  verificationStatus: VerificationStatus | null;
 };
 
 export function PaymentCheckoutCard({
@@ -21,6 +23,7 @@ export function PaymentCheckoutCard({
   formattedFeeAmount,
   formattedBuyerTotal,
   isSignedIn,
+  verificationStatus,
 }: PaymentCheckoutCardProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -80,8 +83,22 @@ export function PaymentCheckoutCard({
           {formattedBuyerTotal}
         </p>
       </div>
-      <div className="mt-5 flex flex-wrap gap-3">
-        {isSignedIn ? (
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+        {!isSignedIn ? (
+          <Link
+            href={`/signup?next=${encodeURIComponent(listingHref)}`}
+            className="rounded-full bg-[var(--foreground)] px-5 py-3 text-center text-sm font-bold text-white"
+          >
+            Sign in to pay
+          </Link>
+        ) : verificationStatus !== "verified" ? (
+          <Link
+            href={`/verify?next=${encodeURIComponent(listingHref)}`}
+            className="rounded-full bg-[var(--foreground)] px-5 py-3 text-center text-sm font-bold text-white"
+          >
+            Verify to pay
+          </Link>
+        ) : (
           <button
             type="button"
             onClick={handleCheckout}
@@ -90,18 +107,16 @@ export function PaymentCheckoutCard({
           >
             {isLoading ? "Redirecting..." : "Pay Securely"}
           </button>
-        ) : (
-          <Link
-            href={`/signup?next=${encodeURIComponent(listingHref)}`}
-            className="rounded-full bg-[var(--foreground)] px-5 py-3 text-sm font-bold text-white"
-          >
-            Sign in to pay
-          </Link>
         )}
-        <span className="rounded-full border border-[var(--line)] bg-white/80 px-4 py-3 text-sm font-medium text-[var(--foreground)]">
+        <span className="rounded-full border border-[var(--line)] bg-white/80 px-4 py-3 text-center text-sm font-medium text-[var(--foreground)]">
           R5 + 0.5% over R500
         </span>
       </div>
+      {isSignedIn && verificationStatus !== "verified" ? (
+        <p className="mt-4 text-sm leading-7 text-[var(--ink-soft)]">
+          Buddies requires approved verification documents before buyer checkout can start.
+        </p>
+      ) : null}
       {error ? (
         <div className="mt-4 rounded-[1.3rem] border border-[rgba(242,140,40,0.2)] bg-[rgba(242,140,40,0.08)] px-4 py-3 text-sm text-[var(--foreground)]">
           {error}
