@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "opennextjs-cloudflare build",
+    "build": "next build && mkdir -p dist/public && cp -r .next/* dist/public/ && cp -r public/* dist/public/",
     "start": "next start",
     "start:cpanel": "node app.js",
     "server:dev": "tsx watch server/src/index.ts",
