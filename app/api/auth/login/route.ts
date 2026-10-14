@@ -75,39 +75,44 @@ export async function POST(request: Request) {
   const url = new URL(request.url);
   const nextPath = sanitizeUserRedirectPath(url.searchParams.get("next"));
   const mode = url.searchParams.get("mode") === "register" ? "register" : "signin";
-  const appBaseUrl = getRequestAppBaseUrl(request);
-  const formData = await request.formData();
-  const botProtection = await verifyBotProtectedRequest({
-    request,
-    action: "account_auth",
-    botProtection: readBotProtectionFromFormData(formData),
-  });
-
-  if (!botProtection.ok) {
-    return NextResponse.redirect(
-      buildSignupUrl(request, {
-        error: "bot_protection_failed",
-        next: nextPath,
-        mode,
-      }),
-    );
-  }
-
-  const email = getFormValue(formData, "email");
-  const password = getFormValue(formData, "password");
-  const displayName = getFormValue(formData, "displayName");
-
-  if (!email || !password) {
-    return NextResponse.redirect(
-      buildSignupUrl(request, {
-        error: "missing_credentials",
-        next: nextPath,
-        mode,
-      }),
-    );
-  }
+  let stage: "runtime" | "auth" | "profile" | "session" = "runtime";
 
   try {
+    const appBaseUrl = getRequestAppBaseUrl(request);
+    const formData = await request.formData();
+    const botProtection = await verifyBotProtectedRequest({
+      request,
+      action: "account_auth",
+      botProtection: readBotProtectionFromFormData(formData),
+    });
+
+    if (!botProtection.ok) {
+      return NextResponse.redirect(
+        buildSignupUrl(request, {
+          error: "bot_protection_failed",
+          next: nextPath,
+          mode,
+        }),
+        { status: 303 },
+      );
+    }
+
+    const email = getFormValue(formData, "email");
+    const password = getFormValue(formData, "password");
+    const displayName = getFormValue(formData, "displayName");
+
+    if (!email || !password) {
+      return NextResponse.redirect(
+        buildSignupUrl(request, {
+          error: "missing_credentials",
+          next: nextPath,
+          mode,
+        }),
+        { status: 303 },
+      );
+    }
+
+    stage = "auth";
     const authResult =
       mode === "register"
         ? await signUpMarketplaceUser({
@@ -132,10 +137,12 @@ export async function POST(request: Request) {
           next: nextPath,
           mode: "signin",
         }),
+        { status: 303 },
       );
     }
 
     const identity = authResult.identity;
+    stage = "profile";
     const marketplaceUser = await upsertMarketplaceUser({
       authUserId: identity.authUserId,
       email: identity.email,
@@ -149,6 +156,7 @@ export async function POST(request: Request) {
       throw new Error("Could not create or update the marketplace user profile.");
     }
 
+    stage = "session";
     const sessionCookieValue = await createUserSessionCookieValue({
       marketplaceUserId: marketplaceUser.id,
       authUserId: identity.authUserId,
@@ -157,7 +165,7 @@ export async function POST(request: Request) {
       name: identity.name,
       expiresAt: identity.expiresAt,
     });
-    const response = NextResponse.redirect(new URL(nextPath, appBaseUrl));
+    const response = NextResponse.redirect(new URL(nextPath, appBaseUrl), { status: 303 });
 
     response.cookies.set({
       name: userSessionCookieName,
@@ -172,12 +180,23 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error) {
+    // Log only an allowlisted category and generated ID, never provider payloads or PII.
+    const correlationId = crypto.randomUUID();
+    console.error("marketplace_auth_failed", { stage, correlationId });
+    const errorCode = stage === "auth"
+      ? mapUserAuthError(error, mode)
+      : stage === "profile"
+        ? "profile_failed"
+        : stage === "session"
+          ? "session_failed"
+          : "auth_unavailable";
     return NextResponse.redirect(
       buildSignupUrl(request, {
-        error: mapUserAuthError(error, mode),
+        error: errorCode,
         next: nextPath,
         mode,
       }),
+      { status: 303 },
     );
   }
 }

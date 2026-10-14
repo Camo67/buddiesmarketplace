@@ -68,7 +68,7 @@ async function verifyInternalToken(token: string | null | undefined) {
 }
 
 export function sanitizeUserRedirectPath(path: string | null | undefined) {
-  if (!path || !path.startsWith("/") || path.startsWith("//")) {
+  if (!path || !path.startsWith("/") || path.startsWith("//") || /[\\\x00-\x20\x7f]/.test(path)) {
     return "/listings";
   }
 
