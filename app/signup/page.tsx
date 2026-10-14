@@ -303,4 +303,4 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
       </section>
     </main>
   );
-          }
+}
