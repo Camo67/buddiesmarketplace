@@ -49,8 +49,11 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
         email_not_confirmed: "Confirm your email first, then sign in.",
         account_exists: "An account with that email already exists. Sign in instead.",
         sign_up_failed:
-          "Supabase could not finish creating your account. Check the auth settings and try again.",
-        sign_in_failed: "Supabase could not sign you in just now. Try again in a moment.",
+          "We could not finish creating your account. Please try again in a moment.",
+        sign_in_failed: "We could not sign you in just now. Please try again in a moment.",
+        profile_failed: "Your account could not be loaded. Please try signing in again in a moment.",
+        session_failed: "We could not start your session. Please try signing in again.",
+        auth_unavailable: "Account access is temporarily unavailable. Please try again in a moment.",
         bot_protection_failed: "Please complete the anti-bot check and try again.",
       }[error] ?? null
     : null;
@@ -85,6 +88,8 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
 
               <div className="mt-6">
                 <ProgressStepper
+                  layout="vertical"
+                  className="[&_li:first-child_h3]:text-white [&_li:first-child_p:last-child]:text-white/80"
                   steps={[
                     {
                       label: "Create account",
@@ -298,4 +303,4 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
       </section>
     </main>
   );
-}
+          }
