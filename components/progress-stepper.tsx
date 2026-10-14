@@ -9,6 +9,7 @@ export type ProgressStep = {
 type ProgressStepperProps = {
   steps: ProgressStep[];
   className?: string;
+  layout?: "responsive" | "vertical";
 };
 
 function getStepClasses(status: ProgressStep["status"]) {
@@ -37,9 +38,11 @@ function getStepClasses(status: ProgressStep["status"]) {
   };
 }
 
-export function ProgressStepper({ steps, className = "" }: ProgressStepperProps) {
+export function ProgressStepper({ steps, className = "", layout = "responsive" }: ProgressStepperProps) {
   const columnsClass =
-    steps.length <= 1
+    layout === "vertical"
+      ? "grid-cols-1"
+      : steps.length <= 1
       ? "md:grid-cols-1"
       : steps.length === 2
         ? "md:grid-cols-2"
