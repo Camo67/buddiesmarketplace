@@ -1,5 +1,4 @@
 import { resolveMx } from "node:dns/promises";
-import EmailVerifier from "email-verifier";
 import { getServerEnv } from "../config/env";
 
 type EmailVerifierResult = {
@@ -27,7 +26,6 @@ export type EmailPrecheckSignal = {
   raw: Record<string, unknown> | null;
 };
 
-let verifierInstance: EmailVerifier | null | undefined;
 
 function stringValue(value: unknown) {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
@@ -104,28 +102,40 @@ function getStatus(signal: {
   return "ok" as const;
 }
 
-function getVerifier() {
-  if (verifierInstance !== undefined) {
-    return verifierInstance;
+// Fixed origin, no redirects, bounded response and timeout. No provider key means local fallback.
+async function verifyWithProvider(email: string, apiKey: string): Promise<EmailVerifierResult> {
+  const url = new URL("https://emailverification.whoisxmlapi.com/api/v1");
+  for (const [key, value] of Object.entries({
+    apiKey, emailAddress: email, validateDNS: "true", validateSMTP: "false",
+    checkCatchAll: "false", checkFree: "false", checkDisposable: "true", outputFormat: "json",
+  })) url.searchParams.set(key, value);
+
+  const response = await fetch(url, { redirect: "error", signal: AbortSignal.timeout(5000) });
+  if (!response.ok || !response.body) throw new Error("email_verifier_unavailable");
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > 32768) throw new Error("email_verifier_unavailable");
+      chunks.push(value);
+    }
+  } finally {
+    await reader.cancel().catch(() => {});
+    reader.releaseLock();
   }
-
-  const { emailVerifierApiKey } = getServerEnv();
-
-  if (!emailVerifierApiKey) {
-    verifierInstance = null;
-    return verifierInstance;
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  const data: unknown = JSON.parse(new TextDecoder().decode(bytes));
+  if (!data || typeof data !== "object" || Array.isArray(data) ||
+      "ErrorMessage" in data || !("emailAddress" in data) || data.emailAddress !== email) {
+    throw new Error("email_verifier_unavailable");
   }
-
-  verifierInstance = new EmailVerifier(emailVerifierApiKey, {
-    checkCatchAll: false,
-    checkDisposable: true,
-    checkFree: false,
-    validateDNS: true,
-    validateSMTP: false,
-    retries: 1,
-  });
-
-  return verifierInstance;
+  return data as EmailVerifierResult;
 }
 
 async function runLocalFallback(email: string, providerError: string | null) {
@@ -165,23 +175,14 @@ async function runLocalFallback(email: string, providerError: string | null) {
 }
 
 async function runProviderCheck(email: string) {
-  const verifier = getVerifier();
+  const { emailVerifierApiKey } = getServerEnv();
 
-  if (!verifier) {
+  if (!emailVerifierApiKey) {
     return runLocalFallback(email, null);
   }
 
   try {
-    const raw = await new Promise<EmailVerifierResult>((resolve, reject) => {
-      verifier.verify(email, (error, data) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-
-        resolve((data ?? {}) as EmailVerifierResult);
-      });
-    });
+    const raw = await verifyWithProvider(email, emailVerifierApiKey);
 
     const signalBase = {
       provider: "email-verifier" as const,
@@ -201,11 +202,8 @@ async function runProviderCheck(email: string) {
       status: getStatus(signalBase),
       warnings: buildWarnings(signalBase),
     } satisfies EmailPrecheckSignal;
-  } catch (error) {
-    return runLocalFallback(
-      email,
-      error instanceof Error ? error.message : "email_verifier_unavailable",
-    );
+  } catch {
+    return runLocalFallback(email, "email_verifier_unavailable");
   }
 }
 
