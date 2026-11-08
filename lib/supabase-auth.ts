@@ -135,9 +135,8 @@ export function getSupabaseUserRoles(user: User) {
     roles.add(role);
   }
 
-  for (const role of readMetadataStringArray(user.user_metadata, "roles")) {
-    roles.add(role);
-  }
+  // user_metadata is writable by the signed-in user and is never an authorization source.
+  // Keep admin grants limited to server-managed app_metadata and configured email allowlist.
 
   const email = user.email?.trim().toLowerCase();
 
